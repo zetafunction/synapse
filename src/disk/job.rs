@@ -360,14 +360,35 @@ impl Request {
                     Ok(_) => {}
                     // Cross filesystem move, try to copy then delete
                     Err(ref e) if e.raw_os_error() == Some(EXDEV) => {
-                        match fs_extra::dir::copy(&fp, &tp, &fs_extra::dir::CopyOptions::new()) {
-                            Ok(_) => {
-                                fs::remove_dir_all(&fp)?;
+                        if fp.is_dir() {
+                            // `fs_extra::dir::copy()` behaves like `cp -r`, so the destination
+                            // path should not include `target`.
+                            let tp = tp.parent().unwrap();
+                            match fs_extra::dir::copy(&fp, &tp, &fs_extra::dir::CopyOptions::new())
+                            {
+                                Ok(_) => {
+                                    fs::remove_dir_all(&fp)?;
+                                }
+                                Err(e) => {
+                                    fs::remove_dir_all(&tp)?;
+                                    error!("Dir copy failed: {:?}", e);
+                                    return io_err("Failed to copy directory across filesystems!");
+                                }
                             }
-                            Err(e) => {
-                                fs::remove_dir_all(&tp)?;
-                                error!("FS copy failed: {:?}", e);
-                                return io_err("Failed to copy directory across filesystems!");
+                        } else {
+                            match fs_extra::file::copy(
+                                &fp,
+                                &tp,
+                                &fs_extra::file::CopyOptions::new(),
+                            ) {
+                                Ok(_) => {
+                                    fs::remove_file(&fp)?;
+                                }
+                                Err(e) => {
+                                    fs::remove_file(&tp)?;
+                                    error!("File copy failed: {:?}", e);
+                                    return io_err("Failed to copy file across filesystems!");
+                                }
                             }
                         }
                     }
