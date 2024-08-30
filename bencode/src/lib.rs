@@ -172,10 +172,13 @@ impl BEncode {
     }
 }
 
+/// Decodes bencoded `bytes`. Trailing characters after parsing a complete object are not permitted.
 pub fn decode_buf(bytes: &[u8]) -> Result<BEncode, BError> {
     decode(&mut Cursor::new(bytes))
 }
 
+/// Like [`decode_buf`], but returns once a complete object is parsed. Trailing bytes after that
+/// are ignored and will not result in a decoding error.
 pub fn decode_buf_first(bytes: &[u8]) -> Result<BEncode, BError> {
     decode_first(&mut Cursor::new(bytes))
 }

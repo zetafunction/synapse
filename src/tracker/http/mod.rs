@@ -121,7 +121,8 @@ impl TrackerState {
                 _,
             ) => match reader.readable(&mut sock)? {
                 ReadRes::Done(data) => {
-                    let content = bencode::decode_buf(&data).chain_err(|| {
+                    // Some trackers incorrectly include trailing characters in the response.
+                    let content = bencode::decode_buf_first(&data).chain_err(|| {
                         let diagnostic = if let Ok(s) = String::from_utf8(data.to_vec()) {
                             format!("invalid bencoded data: {s:?}")
                         } else {
