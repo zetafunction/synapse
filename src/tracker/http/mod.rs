@@ -121,7 +121,22 @@ impl TrackerState {
                 _,
             ) => match reader.readable(&mut sock)? {
                 ReadRes::Done(data) => {
-                    let content = bencode::decode_buf(&data)
+                    // Some trackers incorrectly include a trailing newline in the response.
+                    // libtorrent's bdecode parser allows this since it exits the parsing loop as
+                    // soon as no compound types are on the parsing stack, ignoring any invalid
+                    // trailing characters. For now, explicitly check for a trailing newline and
+                    // drop it if present.
+                    let data = match data.split_last() {
+                        Some((last, first)) => {
+                            if *last == b'\n' {
+                                first
+                            } else {
+                                &data
+                            }
+                        }
+                        None => &data,
+                    };
+                    let content = bencode::decode_buf(data)
                         .chain_err(|| ErrorKind::InvalidResponse("Invalid BEncoded response!"))?;
                     let resp = TrackerResponse::from_bencode(content)?;
                     Ok(TrackerState::Complete(resp))
