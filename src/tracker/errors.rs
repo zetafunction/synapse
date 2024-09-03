@@ -10,6 +10,11 @@ error_chain! {
             display("invalid tracker response: {}", r)
         }
 
+        InvalidResponseWithDiagnostic(data: String) {
+            description("invalid tracker response")
+            display("invalid tracker response: {}", data)
+        }
+
         TrackerError(e: String) {
             description("tracker error response")
             display("tracker error: {}", e)

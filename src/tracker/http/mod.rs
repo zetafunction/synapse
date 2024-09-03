@@ -121,8 +121,14 @@ impl TrackerState {
                 _,
             ) => match reader.readable(&mut sock)? {
                 ReadRes::Done(data) => {
-                    let content = bencode::decode_buf(&data)
-                        .chain_err(|| ErrorKind::InvalidResponse("Invalid BEncoded response!"))?;
+                    let content = bencode::decode_buf(&data).chain_err(|| {
+                        let diagnostic = if let Ok(s) = String::from_utf8(data.to_vec()) {
+                            format!("invalid bencoded data: {s:?}")
+                        } else {
+                            format!("invalid bencoded data: {data:?}")
+                        };
+                        ErrorKind::InvalidResponseWithDiagnostic(diagnostic)
+                    })?;
                     let resp = TrackerResponse::from_bencode(content)?;
                     Ok(TrackerState::Complete(resp))
                 }
