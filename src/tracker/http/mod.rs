@@ -121,8 +121,14 @@ impl TrackerState {
                 _,
             ) => match reader.readable(&mut sock)? {
                 ReadRes::Done(data) => {
-                    let content = bencode::decode_buf(&data)
-                        .chain_err(|| ErrorKind::InvalidResponse("Invalid BEncoded response!"))?;
+                    let content = bencode::decode_buf(&data).chain_err(|| {
+                        let diagnostic = if let Ok(s) = String::from_utf8(data.to_vec()) {
+                            format!("invalid bencoded data: {s:?}")
+                        } else {
+                            format!("invalid bencoded data: {data:?}")
+                        };
+                        ErrorKind::InvalidResponse(diagnostic.into())
+                    })?;
                     let resp = TrackerResponse::from_bencode(content)?;
                     Ok(TrackerState::Complete(resp))
                 }
@@ -236,7 +242,7 @@ impl Handler {
                 resp = Some(Response::Tracker {
                     tid: trk.torrent,
                     url: trk.url.clone(),
-                    resp: Err(ErrorKind::InvalidResponse("Too many redirects").into()),
+                    resp: Err(ErrorKind::InvalidResponse("Too many redirects".into()).into()),
                 });
             }
             if let Err(e) = self.try_redirect(&l, old, trk.torrent, dns) {
@@ -265,16 +271,16 @@ impl Handler {
             Ok(url) => Ok(url),
             Err(url::ParseError::RelativeUrlWithoutBase) => Ok(original_url
                 .join(url)
-                .map_err(|_| ErrorKind::InvalidResponse("Invalid relative redirect URL"))?),
+                .map_err(|_| ErrorKind::InvalidResponse("Invalid relative redirect URL".into()))?),
             Err(e) => Err(e),
         }
         .chain_err(|| {
             error!("{} {}", original_url, url);
-            ErrorKind::InvalidResponse("Malformed redirect!")
+            ErrorKind::InvalidResponse("Malformed redirect!".into())
         })?;
         let host = url.host_str().ok_or_else(|| {
             error!("{}", url);
-            Error::from(ErrorKind::InvalidResponse("Malformed redirect!"))
+            Error::from(ErrorKind::InvalidResponse("Malformed redirect!".into()))
         })?;
         let mut http_req = Vec::with_capacity(512);
         http::RequestBuilder::new("GET", url.path(), url.query())

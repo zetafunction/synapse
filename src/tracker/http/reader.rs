@@ -83,7 +83,9 @@ impl Reader {
                                 .find(|h| h.name == "Location")
                                 .and_then(|h| String::from_utf8(h.value.to_vec()).ok());
                             if loc.is_none() {
-                                return Err(ErrorKind::InvalidResponse("malformed HTTP").into());
+                                return Err(
+                                    ErrorKind::InvalidResponse("malformed HTTP".into()).into()
+                                );
                             }
                             return Ok(Some(ReadRes::Redirect(loc.unwrap())));
                         }
@@ -91,7 +93,7 @@ impl Reader {
                     }
                     Ok(httparse::Status::Partial) => {}
                     Err(_) => {
-                        return Err(ErrorKind::InvalidResponse("malformed HTTP").into());
+                        return Err(ErrorKind::InvalidResponse("malformed HTTP".into()).into());
                     }
                 }
             }

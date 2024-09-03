@@ -5,7 +5,7 @@ error_chain! {
             display("invalid tracker request: {}", r)
         }
 
-        InvalidResponse(r: &'static str) {
+        InvalidResponse(r: std::borrow::Cow<'static, str>) {
             description("invalid tracker response")
             display("invalid tracker response: {}", r)
         }

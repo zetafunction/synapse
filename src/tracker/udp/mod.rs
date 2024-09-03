@@ -343,8 +343,10 @@ impl Handler {
         };
 
         if connect_resp.read_to_string(&mut s).is_err() {
-            let resp =
-                Err(ErrorKind::InvalidResponse("Tracker error response was invalid UTF8").into());
+            let resp = Err(ErrorKind::InvalidResponse(
+                "Tracker error response was invalid UTF8".into(),
+            )
+            .into());
             Some(Response::Tracker {
                 tid: conn.torrent,
                 url: conn.announce.url,
