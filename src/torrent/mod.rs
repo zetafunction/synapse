@@ -544,7 +544,11 @@ impl<T: cio::CIO> Torrent<T> {
         match *resp {
             Ok(ref r) => {
                 if let Some(tracker) = self.trackers.iter_mut().find(|t| &*t.url == url) {
-                    debug!("Got valid response for {}, peers: {}", tracker.url, r.peers.len());
+                    debug!(
+                        "Got valid response for {}, peers: {}",
+                        tracker.url,
+                        r.peers.len()
+                    );
                     time += Duration::from_secs(u64::from(r.interval));
                     tracker.status = TrackerStatus::Ok {
                         seeders: r.seeders,
@@ -561,6 +565,12 @@ impl<T: cio::CIO> Torrent<T> {
             Err(tracker::Error(tracker::ErrorKind::TrackerError(ref s), _)) => {
                 if let Some(tracker) = self.trackers.iter_mut().find(|t| &*t.url == url) {
                     debug!("Got tracker level error for {}", tracker.url);
+                    info!(
+                        "Got tracker error for {} from {}: {}",
+                        util::hash_to_id(&self.info.hash),
+                        tracker.url,
+                        s
+                    );
                     time += Duration::from_secs(300);
                     tracker.update = Some(time);
                     tracker.status = TrackerStatus::Failure(s.clone());
