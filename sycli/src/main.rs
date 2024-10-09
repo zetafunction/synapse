@@ -461,9 +461,9 @@ fn main() {
         }
         "get" => {
             let args = matches.subcommand_matches("get").unwrap();
-            let id = args.value_of("id").unwrap();
+            let id = args.value_of("id").unwrap().to_ascii_uppercase();
             let output = args.value_of("output").unwrap();
-            let res = cmd::get(client, id, output);
+            let res = cmd::get(client, &id, output);
             if let Err(e) = res {
                 eprintln!("Failed to get resource: {}", e.display_chain());
                 process::exit(1);
@@ -510,7 +510,9 @@ fn main() {
         }
         "torrent" => {
             let subcmd = matches.subcommand_matches("torrent").unwrap();
-            let id = subcmd.value_of("torrent id").unwrap_or("none");
+            let id = subcmd
+                .value_of("torrent id")
+                .map_or("none".to_string(), str::to_ascii_uppercase);
             let output = subcmd.value_of("output").unwrap();
             match subcmd.subcommand_name().unwrap() {
                 "move" => {
@@ -519,13 +521,13 @@ fn main() {
                         .unwrap()
                         .value_of("directory")
                         .unwrap();
-                    if let Err(e) = cmd::move_torrent(client, id, dir) {
+                    if let Err(e) = cmd::move_torrent(client, &id, dir) {
                         eprintln!("Failed to move torrent: {}", e.display_chain());
                         process::exit(1);
                     }
                 }
                 "verify" => {
-                    if let Err(e) = cmd::verify_torrent(client, id) {
+                    if let Err(e) = cmd::verify_torrent(client, &id) {
                         eprintln!("Failed to verify integrity: {}", e.display_chain());
                         process::exit(1);
                     }
@@ -536,7 +538,7 @@ fn main() {
                         "add" => {
                             if let Err(e) = cmd::add_trackers(
                                 client,
-                                id,
+                                &id,
                                 sscmd
                                     .subcommand_matches("add")
                                     .unwrap()
@@ -585,7 +587,7 @@ fn main() {
                         "add" => {
                             if let Err(e) = cmd::add_peers(
                                 client,
-                                id,
+                                &id,
                                 sscmd
                                     .subcommand_matches("add")
                                     .unwrap()
@@ -620,7 +622,7 @@ fn main() {
                         "add" => {
                             if let Err(e) = cmd::add_tags(
                                 client,
-                                id,
+                                &id,
                                 sscmd
                                     .subcommand_matches("add")
                                     .unwrap()
@@ -635,7 +637,7 @@ fn main() {
                         "remove" => {
                             if let Err(e) = cmd::remove_tags(
                                 client,
-                                id,
+                                &id,
                                 sscmd
                                     .subcommand_matches("remove")
                                     .unwrap()
@@ -656,31 +658,31 @@ fn main() {
                         .unwrap()
                         .value_of("priority level")
                         .unwrap();
-                    if let Err(e) = cmd::set_torrent_pri(client, id, pri) {
+                    if let Err(e) = cmd::set_torrent_pri(client, &id, pri) {
                         eprintln!("Failed to set torrent priority: {}", e.display_chain());
                         process::exit(1);
                     }
                 }
                 "files" => {
-                    if let Err(e) = cmd::get_files(client, id, output) {
+                    if let Err(e) = cmd::get_files(client, &id, output) {
                         eprintln!("Failed to get torrent files: {}", e.display_chain());
                         process::exit(1);
                     }
                 }
                 "peers" => {
-                    if let Err(e) = cmd::get_peers(client, id, output) {
+                    if let Err(e) = cmd::get_peers(client, &id, output) {
                         eprintln!("Failed to get torrent peers: {}", e.display_chain());
                         process::exit(1);
                     }
                 }
                 "tags" => {
-                    if let Err(e) = cmd::get_tags(client, id) {
+                    if let Err(e) = cmd::get_tags(client, &id) {
                         eprintln!("Failed to get torrent tags: {}", e.display_chain());
                         process::exit(1);
                     }
                 }
                 "trackers" => {
-                    if let Err(e) = cmd::get_trackers(client, id, output) {
+                    if let Err(e) = cmd::get_trackers(client, &id, output) {
                         eprintln!("Failed to get torrent trackers: {}", e.display_chain());
                         process::exit(1);
                     }
@@ -690,10 +692,10 @@ fn main() {
         }
         "watch" => {
             let args = matches.subcommand_matches("watch").unwrap();
-            let id = args.value_of("id").unwrap();
+            let id = args.value_of("id").unwrap().to_ascii_uppercase();
             let output = args.value_of("output").unwrap();
             let completion = args.is_present("completion");
-            let res = cmd::watch(client, id, output, completion);
+            let res = cmd::watch(client, &id, output, completion);
             if let Err(e) = res {
                 eprintln!("Failed to watch resource: {}", e.display_chain());
                 process::exit(1);
