@@ -2,12 +2,14 @@ use std::time::{Duration, Instant};
 
 use crate::control::cio;
 use crate::torrent::Peer;
-use crate::util::{random_sample, FHashSet, UHashMap};
+use crate::util::{random_sample, FHashSet, UHashMap, UnlimitedOrU64};
+use crate::CONFIG;
 
 pub struct Choker {
     unchoked: Vec<usize>,
     interested: FHashSet<usize>,
     last_updated: Instant,
+    unchoke_slots_limit: UnlimitedOrU64,
 }
 
 #[derive(Debug, PartialEq)]
@@ -22,11 +24,22 @@ impl Choker {
             unchoked: Vec::with_capacity(5),
             interested: FHashSet::default(),
             last_updated: Instant::now(),
+            unchoke_slots_limit: CONFIG.peer.unchoke_slots_limit,
+        }
+    }
+
+    #[cfg(test)]
+    fn new_with_limit(limit: u64) -> Choker {
+        Choker {
+            unchoked: Vec::with_capacity(5),
+            interested: FHashSet::default(),
+            last_updated: Instant::now(),
+            unchoke_slots_limit: UnlimitedOrU64::new(limit),
         }
     }
 
     pub fn add_peer<T: cio::CIO>(&mut self, peer: &mut Peer<T>) {
-        if self.unchoked.len() < 5 {
+        if self.unchoked.len() < self.unchoke_slots_limit {
             self.unchoked.push(peer.id());
             peer.flush();
             peer.unchoke();
@@ -142,7 +155,7 @@ mod tests {
 
     #[test]
     fn test_add_peers() {
-        let mut c = Choker::new();
+        let mut c = Choker::new_with_limit(5);
         for i in 0..6 {
             let mut p = Peer::test(i, 0, 0, 0, Bitfield::new(1));
             // Since the socket is a dummy
@@ -154,7 +167,7 @@ mod tests {
 
     #[test]
     fn test_remove_peers() {
-        let mut c = Choker::new();
+        let mut c = Choker::new_with_limit(5);
         let mut v = Vec::new();
         let mut h = UHashMap::default();
         for i in 0..6 {
@@ -178,7 +191,7 @@ mod tests {
 
     #[test]
     fn test_update_upload() {
-        let mut c = Choker::new();
+        let mut c = Choker::new_with_limit(5);
         let mut h = UHashMap::default();
         assert_eq!(c.update_upload(&mut h).is_none(), true);
         for i in 0..6 {
@@ -195,7 +208,7 @@ mod tests {
 
     #[test]
     fn test_update_download() {
-        let mut c = Choker::new();
+        let mut c = Choker::new_with_limit(5);
         let mut h = UHashMap::default();
         assert_eq!(c.update_download(&mut h).is_none(), true);
         for i in 0..6 {

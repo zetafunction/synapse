@@ -25,6 +25,61 @@ pub type SHashMap<T> = MHashMap<String, T>;
 
 pub use self::io::{aread, awrite, io_err, io_err_val, IOR};
 
+#[derive(Debug, Clone, Copy, Eq, Ord, PartialEq, PartialOrd)]
+pub struct UnlimitedOrU64(Option<std::num::NonZeroU64>);
+
+impl UnlimitedOrU64 {
+    pub fn new(val: u64) -> UnlimitedOrU64 {
+        UnlimitedOrU64(std::num::NonZeroU64::new(val))
+    }
+}
+
+impl PartialEq<usize> for UnlimitedOrU64 {
+    fn eq(&self, other: &usize) -> bool {
+        self.0.map_or(false, |val| val.get() == *other as u64)
+    }
+}
+
+impl PartialEq<UnlimitedOrU64> for usize {
+    fn eq(&self, other: &UnlimitedOrU64) -> bool {
+        other == self
+    }
+}
+
+impl PartialOrd<usize> for UnlimitedOrU64 {
+    fn partial_cmp(&self, other: &usize) -> Option<std::cmp::Ordering> {
+        match self.0 {
+            None => Some(std::cmp::Ordering::Greater),
+            Some(val) => val.get().partial_cmp(&(*other as u64)),
+        }
+    }
+}
+
+impl PartialOrd<UnlimitedOrU64> for usize {
+    fn partial_cmp(&self, other: &UnlimitedOrU64) -> Option<std::cmp::Ordering> {
+        other.partial_cmp(self).map(std::cmp::Ordering::reverse)
+    }
+}
+
+impl serde::Serialize for UnlimitedOrU64 {
+    fn serialize<S>(&self, serializer: S) -> core::result::Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_u64(self.0.map_or(0, |x| x.into()))
+    }
+}
+
+impl<'de> serde::Deserialize<'de> for UnlimitedOrU64 {
+    fn deserialize<D>(deserializer: D) -> core::result::Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let val: u64 = serde::Deserialize::deserialize(deserializer)?;
+        Ok(UnlimitedOrU64::new(val))
+    }
+}
+
 pub fn random_sample<A, T>(iter: A) -> Option<T>
 where
     A: Iterator<Item = T>,
@@ -168,6 +223,36 @@ macro_rules! div_round_up {
 #[cfg(test)]
 mod test {
     use super::*;
+
+    #[test]
+    fn test_unlimitedoru64_partial_eq() {
+        const EIGHT: UnlimitedOrU64 = UnlimitedOrU64(std::num::NonZeroU64::new(8));
+        assert!(EIGHT == 8);
+        assert!(8 == EIGHT);
+        assert!(EIGHT != 9);
+        assert!(9 != EIGHT);
+
+        const UNLIMITED: UnlimitedOrU64 = UnlimitedOrU64(None);
+        assert!(UNLIMITED != 8);
+        assert!(8 != UNLIMITED);
+        assert!(UNLIMITED != 9);
+        assert!(9 != UNLIMITED);
+    }
+
+    #[test]
+    fn test_unlimitedoru64_partial_ord() {
+        const EIGHT: UnlimitedOrU64 = UnlimitedOrU64(std::num::NonZeroU64::new(8));
+        assert!(EIGHT > 7);
+        assert!(7 < EIGHT);
+        assert!(EIGHT < 9);
+        assert!(9 > EIGHT);
+
+        const UNLIMITED: UnlimitedOrU64 = UnlimitedOrU64(None);
+        assert!(UNLIMITED > 8);
+        assert!(8 < UNLIMITED);
+        assert!(UNLIMITED > 9);
+        assert!(9 < UNLIMITED);
+    }
 
     #[test]
     fn test_hash_enc() {
