@@ -50,6 +50,7 @@ max_open_announces = 50
 # a connection is eligible for forced pruning
 # when the max socket limit is reached
 prune_timeout = 15
+unchoke_slots_limit = 5
 
 [ip_filter]
 # Assign IP prefix filter rules. Valid value range is 0..255

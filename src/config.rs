@@ -5,6 +5,7 @@ use std::net::{SocketAddr, ToSocketAddrs};
 use std::{fs, process};
 
 use crate::args;
+use crate::util::UnlimitedOrU64;
 
 error_chain! {
     errors {
@@ -120,6 +121,8 @@ pub struct NetConfig {
 pub struct PeerConfig {
     #[serde(default = "default_prune_timeout")]
     pub prune_timeout: u64,
+    #[serde(default = "default_unchoke_slots_limit")]
+    pub unchoke_slots_limit: UnlimitedOrU64,
 }
 
 impl ConfigFile {
@@ -238,8 +241,8 @@ fn default_bootstrap_node() -> Option<String> {
 }
 fn default_bootstrap_node_addr() -> Option<SocketAddr> {
     default_bootstrap_node()
-       .and_then(|n| n.to_socket_addrs().ok())
-       .and_then(|mut a| a.next())
+        .and_then(|n| n.to_socket_addrs().ok())
+        .and_then(|mut a| a.next())
 }
 fn default_session_dir() -> String {
     shellexpand::full("$XDG_DATA_HOME/synapse")
@@ -263,6 +266,9 @@ fn default_max_announces() -> usize {
 }
 fn default_prune_timeout() -> u64 {
     15
+}
+fn default_unchoke_slots_limit() -> UnlimitedOrU64 {
+    UnlimitedOrU64::new(8)
 }
 fn default_ip_filter() -> HashMap<IpNetwork, u8> {
     HashMap::from([
@@ -350,6 +356,7 @@ impl Default for PeerConfig {
     fn default() -> PeerConfig {
         PeerConfig {
             prune_timeout: default_prune_timeout(),
+            unchoke_slots_limit: default_unchoke_slots_limit(),
         }
     }
 }
