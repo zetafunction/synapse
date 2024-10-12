@@ -11,7 +11,7 @@ use url::Url;
 
 use rpc::criterion::{Criterion, Operation, Value};
 use rpc::message::{self, CMessage, SMessage};
-use rpc::resource::{CResourceUpdate, Resource, ResourceKind, SResourceUpdate, Server};
+use rpc::resource::{CResourceUpdate, PathUpdate, Resource, ResourceKind, SResourceUpdate, Server};
 use synapse_rpc as rpc;
 
 use crate::client::Client;
@@ -464,7 +464,7 @@ pub fn watch(mut c: Client, id: &str, output: &str, completion: bool) -> Result<
     }
 }
 
-pub fn move_torrent(mut c: Client, id: &str, dir: &str) -> Result<()> {
+pub fn move_torrent(mut c: Client, id: &str, dir: &str, skip_files: bool) -> Result<()> {
     let torrent = search_torrent_name(&mut c, id)?;
     if torrent.len() != 1 {
         bail!("Could not find appropriate torrent!");
@@ -473,7 +473,11 @@ pub fn move_torrent(mut c: Client, id: &str, dir: &str) -> Result<()> {
         serial: c.next_serial(),
         resource: CResourceUpdate {
             id: torrent[0].id().to_owned(),
-            path: Some(dir.to_owned()),
+            path: Some(if skip_files {
+                PathUpdate::MoveSkipFiles(dir.to_owned())
+            } else {
+                PathUpdate::Move(dir.to_owned())
+            }),
             ..Default::default()
         },
     };

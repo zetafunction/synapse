@@ -179,13 +179,19 @@ pub enum SResourceUpdate<'a> {
     },
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub enum PathUpdate {
+    Move(String),
+    MoveSkipFiles(String),
+}
+
 /// Collection of mutable fields that clients
 /// can modify. Due to shared field names, all fields are aggregated
 #[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct CResourceUpdate {
     pub id: String,
-    pub path: Option<String>,
+    pub path: Option<PathUpdate>,
     pub priority: Option<u8>,
     pub strategy: Option<Strategy>,
     #[serde(deserialize_with = "deserialize_throttle")]

@@ -224,6 +224,14 @@ fn main() {
                                 .help("Directory to move the torrent to.")
                                 .index(1)
                                 .required(true),
+                        )
+                        .arg(
+                            Arg::new("skip files")
+                                .help(
+                                    "Skip moving the files for the torrent; just update the path.",
+                                )
+                                .long("skip-files")
+                                .action(ArgAction::SetTrue),
                         ),
                     Command::new("tracker")
                         .about("Manipulate trackers for a torrent")
@@ -513,7 +521,10 @@ fn main() {
             match torrent_args.subcommand().unwrap() {
                 ("move", move_args) => {
                     let dir = move_args.get_one::<String>("directory").unwrap();
-                    if let Err(e) = cmd::move_torrent(client, &id, dir) {
+                    move_args.get_flag("skip files");
+                    if let Err(e) =
+                        cmd::move_torrent(client, &id, dir, move_args.get_flag("skip files"))
+                    {
                         eprintln!("Failed to move torrent: {}", e.display_chain());
                         process::exit(1);
                     }
