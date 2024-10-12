@@ -731,15 +731,7 @@ impl<T: cio::CIO> Torrent<T> {
             }
             disk::Response::Moved { path, .. } => {
                 debug!("Moved torrent!");
-                let id = self.rpc_id();
-                self.path = Some(path.clone());
-                self.cio.msg_rpc(rpc::CtlMessage::Update(vec![
-                    resource::SResourceUpdate::TorrentPath {
-                        id,
-                        kind: resource::ResourceKind::Torrent,
-                        path,
-                    },
-                ]));
+                self.set_path_skip_files(path);
             }
             disk::Response::PieceValidated { piece, valid, .. } => {
                 self.validating.remove(&piece);
@@ -1380,8 +1372,10 @@ impl<T: cio::CIO> Torrent<T> {
             self.set_throttle(tu, td);
         }
 
-        if let Some(p) = u.path {
-            self.set_path(p);
+        match u.path {
+            Some(resource::PathUpdate::Move(p)) => self.set_path(p),
+            Some(resource::PathUpdate::MoveSkipFiles(p)) => self.set_path_skip_files(p),
+            None => {}
         }
 
         if let Some(p) = u.priority {
@@ -1553,6 +1547,18 @@ impl<T: cio::CIO> Torrent<T> {
             to: path,
             target: self.info.name.clone(),
         });
+    }
+
+    fn set_path_skip_files(&mut self, path: String) {
+        let id = self.rpc_id();
+        self.path = Some(path.clone());
+        self.cio.msg_rpc(rpc::CtlMessage::Update(vec![
+            resource::SResourceUpdate::TorrentPath {
+                id,
+                kind: resource::ResourceKind::Torrent,
+                path,
+            },
+        ]));
     }
 
     fn set_priority(&mut self, priority: u8) {
