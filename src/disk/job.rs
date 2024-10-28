@@ -352,6 +352,7 @@ impl Request {
                 let tp = tpb2.get(&to);
                 fp.push(target.clone());
                 tp.push(target);
+                error!("Attempting to move {fp:?} to {tp:?}");
                 match fs::rename(&fp, &tp) {
                     Ok(_) => {}
                     // Cross filesystem move, try to copy then delete
