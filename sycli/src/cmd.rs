@@ -332,9 +332,9 @@ pub fn list(mut c: Client, kind: &str, crit: Vec<Criterion>, output: &str) -> Re
     Ok(())
 }
 
-pub fn pause(mut c: Client, torrents: Vec<&str>) -> Result<()> {
+pub fn pause<T: AsRef<str>>(mut c: Client, torrents: &[T]) -> Result<()> {
     for torrent in torrents {
-        pause_torrent(&mut c, torrent)?;
+        pause_torrent(&mut c, torrent.as_ref())?;
     }
     Ok(())
 }
@@ -366,9 +366,9 @@ fn pause_torrent(c: &mut Client, torrent: &str) -> Result<()> {
     Ok(())
 }
 
-pub fn resume(mut c: Client, torrents: Vec<&str>) -> Result<()> {
+pub fn resume<T: AsRef<str>>(mut c: Client, torrents: &[T]) -> Result<()> {
     for torrent in torrents {
-        resume_torrent(&mut c, torrent)?;
+        resume_torrent(&mut c, torrent.as_ref())?;
     }
     Ok(())
 }

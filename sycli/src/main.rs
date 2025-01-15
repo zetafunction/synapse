@@ -481,11 +481,11 @@ fn main() {
         ("pause", pause_args) => {
             let res = cmd::pause(
                 client,
-                pause_args
-                    .get_many("torrents")
+                &pause_args
+                    .get_many::<String>("torrents")
                     .unwrap()
-                    .map(String::as_str)
-                    .collect(),
+                    .map(|s| s.to_ascii_uppercase())
+                    .collect::<Vec<_>>(),
             );
             if let Err(e) = res {
                 eprintln!("Failed to pause torrents: {}", e.display_chain());
@@ -495,11 +495,11 @@ fn main() {
         ("resume", resume_args) => {
             let res = cmd::resume(
                 client,
-                resume_args
-                    .get_many("torrents")
+                &resume_args
+                    .get_many::<String>("torrents")
                     .unwrap()
-                    .map(String::as_str)
-                    .collect(),
+                    .map(|s| s.to_ascii_uppercase())
+                    .collect::<Vec<_>>(),
             );
             if let Err(e) = res {
                 eprintln!("Failed to resume torrents: {}", e.display_chain());
