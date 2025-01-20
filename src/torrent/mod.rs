@@ -571,7 +571,7 @@ impl<T: cio::CIO> Torrent<T> {
                         tracker.url,
                         s
                     );
-                    time += Duration::from_secs(300);
+                    time += Duration::from_secs(CONFIG.net.min_announce_interval);
                     tracker.update = Some(time);
                     tracker.status = TrackerStatus::Failure(s.clone());
                     tracker.last_announce = Utc::now();
@@ -580,8 +580,7 @@ impl<T: cio::CIO> Torrent<T> {
             Err(ref e) => {
                 if let Some(tracker) = self.trackers.iter_mut().find(|t| &*t.url == url) {
                     error!("Failed to query tracker {}: {}", tracker.url, e);
-                    // Wait 5 minutes before trying again
-                    time += Duration::from_secs(300);
+                    time += Duration::from_secs(CONFIG.net.min_announce_interval);
                     tracker.update = Some(time);
                     let reason = format!("Couldn't contact tracker: {}", e);
                     tracker.status = TrackerStatus::Failure(reason);
