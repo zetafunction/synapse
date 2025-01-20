@@ -115,6 +115,8 @@ pub struct NetConfig {
     pub max_open_sockets: usize,
     #[serde(default = "default_max_announces")]
     pub max_open_announces: usize,
+    #[serde(default = "default_min_announce_interval")]
+    pub min_announce_interval: u64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -264,6 +266,9 @@ fn default_max_sockets() -> usize {
 fn default_max_announces() -> usize {
     50
 }
+fn default_min_announce_interval() -> u64 {
+    30 * 60
+}
 fn default_prune_timeout() -> u64 {
     15
 }
@@ -348,6 +353,7 @@ impl Default for NetConfig {
             max_open_files: default_max_files(),
             max_open_sockets: default_max_sockets(),
             max_open_announces: default_max_announces(),
+            min_announce_interval: default_min_announce_interval(),
         }
     }
 }
