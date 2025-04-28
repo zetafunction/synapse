@@ -23,11 +23,12 @@ pub enum Resource {
     Tracker(Tracker),
 }
 
-#[derive(Copy, Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Copy, Clone, Default, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
 #[serde(rename_all = "lowercase")]
 pub enum ResourceKind {
     Server = 0,
+    #[default]
     Torrent,
     Peer,
     File,
@@ -361,10 +362,11 @@ impl Torrent {
     }
 }
 
-#[derive(Copy, Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Copy, Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "lowercase")]
 #[serde(deny_unknown_fields)]
 pub enum Status {
+    #[default]
     Pending,
     Magnet,
     Paused,
@@ -386,8 +388,8 @@ pub enum Strategy {
 impl Strategy {
     pub fn as_str(&self) -> &'static str {
         match self {
-            &Strategy::Rarest => "rarest",
-            &Strategy::Sequential => "sequential",
+            Strategy::Rarest => "rarest",
+            Strategy::Sequential => "sequential",
         }
     }
 }
@@ -488,41 +490,39 @@ pub struct Tracker {
 
 impl Tracker {
     pub fn update(&mut self, update: SResourceUpdate<'_>) {
-        match update {
-            SResourceUpdate::TrackerStatus {
-                last_report, error, ..
-            } => {
-                self.last_report = last_report;
-                self.error = error;
-            }
-            _ => {}
+        if let SResourceUpdate::TrackerStatus {
+            last_report, error, ..
+        } = update
+        {
+            self.last_report = last_report;
+            self.error = error;
         }
     }
 }
 
-impl<'a> SResourceUpdate<'a> {
+impl SResourceUpdate<'_> {
     pub fn id(&self) -> &str {
         match self {
-            &SResourceUpdate::Resource(ref r) => r.id(),
-            &SResourceUpdate::Throttle { ref id, .. }
-            | &SResourceUpdate::Rate { ref id, .. }
-            | &SResourceUpdate::UserData { ref id, .. }
-            | &SResourceUpdate::ServerTransfer { ref id, .. }
-            | &SResourceUpdate::ServerToken { ref id, .. }
-            | &SResourceUpdate::ServerSpace { ref id, .. }
-            | &SResourceUpdate::TorrentStatus { ref id, .. }
-            | &SResourceUpdate::TorrentTransfer { ref id, .. }
-            | &SResourceUpdate::TorrentPeers { ref id, .. }
-            | &SResourceUpdate::TorrentPicker { ref id, .. }
-            | &SResourceUpdate::TorrentPriority { ref id, .. }
-            | &SResourceUpdate::TorrentPath { ref id, .. }
-            | &SResourceUpdate::TorrentPieces { ref id, .. }
-            | &SResourceUpdate::FilePriority { ref id, .. }
-            | &SResourceUpdate::FileProgress { ref id, .. }
-            | &SResourceUpdate::TrackerStatus { ref id, .. }
-            | &SResourceUpdate::PeerAvailability { ref id, .. }
-            | &SResourceUpdate::PieceAvailable { ref id, .. }
-            | &SResourceUpdate::PieceDownloaded { ref id, .. } => id,
+            SResourceUpdate::Resource(r) => r.id(),
+            SResourceUpdate::Throttle { id, .. }
+            | SResourceUpdate::Rate { id, .. }
+            | SResourceUpdate::UserData { id, .. }
+            | SResourceUpdate::ServerTransfer { id, .. }
+            | SResourceUpdate::ServerToken { id, .. }
+            | SResourceUpdate::ServerSpace { id, .. }
+            | SResourceUpdate::TorrentStatus { id, .. }
+            | SResourceUpdate::TorrentTransfer { id, .. }
+            | SResourceUpdate::TorrentPeers { id, .. }
+            | SResourceUpdate::TorrentPicker { id, .. }
+            | SResourceUpdate::TorrentPriority { id, .. }
+            | SResourceUpdate::TorrentPath { id, .. }
+            | SResourceUpdate::TorrentPieces { id, .. }
+            | SResourceUpdate::FilePriority { id, .. }
+            | SResourceUpdate::FileProgress { id, .. }
+            | SResourceUpdate::TrackerStatus { id, .. }
+            | SResourceUpdate::PeerAvailability { id, .. }
+            | SResourceUpdate::PieceAvailable { id, .. }
+            | SResourceUpdate::PieceDownloaded { id, .. } => id,
         }
     }
 }
@@ -530,114 +530,114 @@ impl<'a> SResourceUpdate<'a> {
 impl Resource {
     pub fn id(&self) -> &str {
         match self {
-            &Resource::Server(ref t) => &t.id,
-            &Resource::Torrent(ref t) => &t.id,
-            &Resource::File(ref t) => &t.id,
-            &Resource::Piece(ref t) => &t.id,
-            &Resource::Peer(ref t) => &t.id,
-            &Resource::Tracker(ref t) => &t.id,
+            Resource::Server(t) => &t.id,
+            Resource::Torrent(t) => &t.id,
+            Resource::File(t) => &t.id,
+            Resource::Piece(t) => &t.id,
+            Resource::Peer(t) => &t.id,
+            Resource::Tracker(t) => &t.id,
         }
     }
 
     pub fn torrent_id(&self) -> Option<&str> {
         match self {
-            &Resource::File(ref t) => Some(&t.torrent_id),
-            &Resource::Piece(ref t) => Some(&t.torrent_id),
-            &Resource::Peer(ref t) => Some(&t.torrent_id),
-            &Resource::Tracker(ref t) => Some(&t.torrent_id),
+            Resource::File(t) => Some(&t.torrent_id),
+            Resource::Piece(t) => Some(&t.torrent_id),
+            Resource::Peer(t) => Some(&t.torrent_id),
+            Resource::Tracker(t) => Some(&t.torrent_id),
             _ => None,
         }
     }
 
     pub fn kind(&self) -> ResourceKind {
         match self {
-            &Resource::Server(_) => ResourceKind::Server,
-            &Resource::Torrent(_) => ResourceKind::Torrent,
-            &Resource::File(_) => ResourceKind::File,
-            &Resource::Piece(_) => ResourceKind::Piece,
-            &Resource::Peer(_) => ResourceKind::Peer,
-            &Resource::Tracker(_) => ResourceKind::Tracker,
+            Resource::Server(_) => ResourceKind::Server,
+            Resource::Torrent(_) => ResourceKind::Torrent,
+            Resource::File(_) => ResourceKind::File,
+            Resource::Piece(_) => ResourceKind::Piece,
+            Resource::Peer(_) => ResourceKind::Peer,
+            Resource::Tracker(_) => ResourceKind::Tracker,
         }
     }
 
     pub fn user_data(&mut self) -> &mut json::Value {
         match self {
-            &mut Resource::Server(ref mut r) => &mut r.user_data,
-            &mut Resource::Torrent(ref mut r) => &mut r.user_data,
-            &mut Resource::File(ref mut r) => &mut r.user_data,
-            &mut Resource::Piece(ref mut r) => &mut r.user_data,
-            &mut Resource::Peer(ref mut r) => &mut r.user_data,
-            &mut Resource::Tracker(ref mut r) => &mut r.user_data,
+            Resource::Server(r) => &mut r.user_data,
+            Resource::Torrent(r) => &mut r.user_data,
+            Resource::File(r) => &mut r.user_data,
+            Resource::Piece(r) => &mut r.user_data,
+            Resource::Peer(r) => &mut r.user_data,
+            Resource::Tracker(r) => &mut r.user_data,
         }
     }
 
     pub fn as_server(&self) -> &Server {
         match self {
-            &Resource::Server(ref s) => s,
+            Resource::Server(s) => s,
             _ => panic!(),
         }
     }
 
     pub fn as_torrent(&self) -> &Torrent {
         match self {
-            &Resource::Torrent(ref t) => t,
+            Resource::Torrent(t) => t,
             _ => panic!(),
         }
     }
 
     pub fn as_torrent_mut(&mut self) -> &mut Torrent {
         match self {
-            &mut Resource::Torrent(ref mut t) => t,
+            Resource::Torrent(t) => t,
             _ => panic!(),
         }
     }
 
     pub fn as_file(&self) -> &File {
         match self {
-            &Resource::File(ref f) => f,
+            Resource::File(f) => f,
             _ => panic!(),
         }
     }
 
     pub fn as_piece(&self) -> &Piece {
         match self {
-            &Resource::Piece(ref p) => p,
+            Resource::Piece(p) => p,
             _ => panic!(),
         }
     }
 
     pub fn as_peer(&self) -> &Peer {
         match self {
-            &Resource::Peer(ref p) => p,
+            Resource::Peer(p) => p,
             _ => panic!(),
         }
     }
 
     pub fn as_tracker(&self) -> &Tracker {
         match self {
-            &Resource::Tracker(ref t) => t,
+            Resource::Tracker(t) => t,
             _ => panic!(),
         }
     }
 
     pub fn update(&mut self, update: SResourceUpdate<'_>) {
         match self {
-            &mut Resource::Server(ref mut s) => {
+            Resource::Server(s) => {
                 s.update(update);
             }
-            &mut Resource::Torrent(ref mut t) => {
+            Resource::Torrent(t) => {
                 t.update(update);
             }
-            &mut Resource::Piece(ref mut p) => {
+            Resource::Piece(p) => {
                 p.update(update);
             }
-            &mut Resource::File(ref mut f) => {
+            Resource::File(f) => {
                 f.update(update);
             }
-            &mut Resource::Peer(ref mut p) => {
+            Resource::Peer(p) => {
                 p.update(update);
             }
-            &mut Resource::Tracker(ref mut t) => {
+            Resource::Tracker(t) => {
                 t.update(update);
             }
         }
@@ -647,57 +647,44 @@ impl Resource {
 impl fmt::Display for Resource {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            &Resource::Server(ref t) => {
-                write!(f, "Server {{")?;
-                write!(f, "\n")?;
-                write!(f, "  id: {}", t.id)?;
-                write!(f, "\n")?;
-                write!(f, "  upload: {} B/s", t.rate_up)?;
-                write!(f, "\n")?;
-                write!(f, "  download: {} B/s", t.rate_down)?;
-                write!(f, "\n")?;
+            Resource::Server(t) => {
+                writeln!(f, "Server {{")?;
+                writeln!(f, "  id: {}", t.id)?;
+                writeln!(f, "  upload: {} B/s", t.rate_up)?;
+                writeln!(f, "  download: {} B/s", t.rate_down)?;
                 match t.throttle_up {
                     Some(u) if u >= 0 => {
-                        write!(f, "  throttle up: {} B/s", u)?;
+                        writeln!(f, "  throttle up: {} B/s", u)?;
                     }
                     Some(u) => {
-                        write!(f, "  throttle up: invalid({})", u)?;
+                        writeln!(f, "  throttle up: invalid({})", u)?;
                     }
                     None => {
-                        write!(f, "  throttle up: unlimited")?;
+                        writeln!(f, "  throttle up: unlimited")?;
                     }
                 }
-                write!(f, "\n")?;
                 match t.throttle_down {
                     Some(u) if u >= 0 => {
-                        write!(f, "  throttle down: {} B/s", u)?;
+                        writeln!(f, "  throttle down: {} B/s", u)?;
                     }
                     Some(u) => {
-                        write!(f, "  throttle down: invalid({})", u)?;
+                        writeln!(f, "  throttle down: invalid({})", u)?;
                     }
                     None => {
-                        write!(f, "  throttle down: unlimited")?;
+                        writeln!(f, "  throttle down: unlimited")?;
                     }
                 }
-                write!(f, "\n")?;
-                write!(f, "  uploaded: {} B", t.transferred_up)?;
-                write!(f, "\n")?;
-                write!(f, "  downloaded: {} B", t.transferred_down)?;
-                write!(f, "\n")?;
-                write!(f, "  session upload: {} B", t.ses_transferred_up)?;
-                write!(f, "\n")?;
-                write!(f, "  session download: {} B", t.ses_transferred_down)?;
-                write!(f, "\n")?;
-                write!(f, "  started at: {}", t.started)?;
-                write!(f, "\n")?;
+                writeln!(f, "  uploaded: {} B", t.transferred_up)?;
+                writeln!(f, "  downloaded: {} B", t.transferred_down)?;
+                writeln!(f, "  session upload: {} B", t.ses_transferred_up)?;
+                writeln!(f, "  session download: {} B", t.ses_transferred_down)?;
+                writeln!(f, "  started at: {}", t.started)?;
                 write!(f, "}}")?;
             }
-            &Resource::Torrent(ref t) => {
-                write!(f, "Torrent {{")?;
-                write!(f, "\n")?;
-                write!(f, "  id: {}", t.id)?;
-                write!(f, "\n")?;
-                write!(
+            Resource::Torrent(t) => {
+                writeln!(f, "Torrent {{")?;
+                writeln!(f, "  id: {}", t.id)?;
+                writeln!(
                     f,
                     "  name: {}",
                     if let Some(ref n) = t.name {
@@ -706,99 +693,77 @@ impl fmt::Display for Resource {
                         "Unknown (magnet)"
                     }
                 )?;
-                write!(f, "\n")?;
-                write!(f, "  path: {}", t.path)?;
-                write!(f, "\n")?;
-                write!(f, "  created at: {}", t.created)?;
-                write!(f, "\n")?;
-                write!(f, "  modified at: {}", t.modified)?;
-                write!(f, "\n")?;
-                write!(f, "  status: {}", t.status.as_str())?;
-                write!(f, "\n")?;
+                writeln!(f, "  path: {}", t.path)?;
+                writeln!(f, "  created at: {}", t.created)?;
+                writeln!(f, "  modified at: {}", t.modified)?;
+                writeln!(f, "  status: {}", t.status.as_str())?;
                 if let Some(ref e) = t.error {
-                    write!(f, "  error: {}", e)?;
-                    write!(f, "\n")?;
+                    writeln!(f, "  error: {}", e)?;
                 }
-                write!(f, "  priority: {}", t.priority)?;
-                write!(f, "\n")?;
-                write!(f, "  progress: {}", t.progress)?;
-                write!(f, "\n")?;
-                write!(f, "  availability: {}", t.availability)?;
-                write!(f, "\n")?;
-                write!(f, "  strategy: {:?}", t.strategy)?;
-                write!(f, "\n")?;
-                write!(f, "  upload: {} B/s", t.rate_up)?;
-                write!(f, "\n")?;
-                write!(f, "  download: {} B/s", t.rate_down)?;
-                write!(f, "\n")?;
+                writeln!(f, "  priority: {}", t.priority)?;
+                writeln!(f, "  progress: {}", t.progress)?;
+                writeln!(f, "  availability: {}", t.availability)?;
+                writeln!(f, "  strategy: {:?}", t.strategy)?;
+                writeln!(f, "  upload: {} B/s", t.rate_up)?;
+                writeln!(f, "  download: {} B/s", t.rate_down)?;
                 match t.throttle_up {
                     Some(u) if u >= 0 => {
-                        write!(f, "  throttle up: {} B/s", u)?;
+                        writeln!(f, "  throttle up: {} B/s", u)?;
                     }
                     Some(_) => {
-                        write!(f, "  throttle up: unlimited")?;
+                        writeln!(f, "  throttle up: unlimited")?;
                     }
                     None => {
-                        write!(f, "  throttle up: server")?;
+                        writeln!(f, "  throttle up: server")?;
                     }
                 }
-                write!(f, "\n")?;
                 match t.throttle_down {
                     Some(u) if u >= 0 => {
-                        write!(f, "  throttle down: {} B/s", u)?;
+                        writeln!(f, "  throttle down: {} B/s", u)?;
                     }
                     Some(_) => {
-                        write!(f, "  throttle down: unlimited")?;
+                        writeln!(f, "  throttle down: unlimited")?;
                     }
                     None => {
-                        write!(f, "  throttle down: server")?;
+                        writeln!(f, "  throttle down: server")?;
                     }
                 }
-                write!(f, "\n")?;
-                write!(f, "  uploaded: {} B", t.transferred_up)?;
-                write!(f, "\n")?;
-                write!(f, "  downloaded: {} B", t.transferred_down)?;
-                write!(f, "\n")?;
-                write!(f, "  peers: {}", t.peers)?;
-                write!(f, "\n")?;
-                write!(f, "  trackers: {}", t.trackers)?;
-                write!(f, "\n")?;
+                writeln!(f, "  uploaded: {} B", t.transferred_up)?;
+                writeln!(f, "  downloaded: {} B", t.transferred_down)?;
+                writeln!(f, "  peers: {}", t.peers)?;
+                writeln!(f, "  trackers: {}", t.trackers)?;
                 if let Some(s) = t.size {
-                    write!(f, "  size: {} B", s)?;
+                    writeln!(f, "  size: {} B", s)?;
                 } else {
-                    write!(f, "  size: Unknown (magnet)")?;
+                    writeln!(f, "  size: Unknown (magnet)")?;
                 }
-                write!(f, "\n")?;
                 if let Some(p) = t.pieces {
-                    write!(f, "  pieces: {}", p)?;
+                    writeln!(f, "  pieces: {}", p)?;
                 } else {
-                    write!(f, "  pieces: Unknown (magnet)")?;
+                    writeln!(f, "  pieces: Unknown (magnet)")?;
                 }
-                write!(f, "\n")?;
                 if let Some(p) = t.piece_size {
-                    write!(f, "  piece size: {} B", p)?;
+                    writeln!(f, "  piece size: {} B", p)?;
                 } else {
-                    write!(f, "  piece size: Unknown (magnet)")?;
+                    writeln!(f, "  piece size: Unknown (magnet)")?;
                 }
-                write!(f, "\n")?;
                 if let Some(files) = t.files {
-                    write!(f, "  files: {}", files)?;
+                    writeln!(f, "  files: {}", files)?;
                 } else {
-                    write!(f, "  files: Unknown (magnet)")?;
+                    writeln!(f, "  files: Unknown (magnet)")?;
                 }
-                write!(f, "\n")?;
                 write!(f, "}}")?;
             }
-            &Resource::File(ref t) => {
+            Resource::File(t) => {
                 write!(f, "{:#?}", t)?;
             }
-            &Resource::Piece(ref t) => {
+            Resource::Piece(t) => {
                 write!(f, "{:#?}", t)?;
             }
-            &Resource::Peer(ref t) => {
+            Resource::Peer(t) => {
                 write!(f, "{:#?}", t)?;
             }
-            &Resource::Tracker(ref t) => {
+            Resource::Tracker(t) => {
                 write!(f, "{:#?}", t)?;
             }
         }
@@ -824,12 +789,12 @@ where
 impl Queryable for Resource {
     fn field(&self, f: &str) -> Option<Field<'_>> {
         match self {
-            &Resource::Server(ref t) => t.field(f),
-            &Resource::Torrent(ref t) => t.field(f),
-            &Resource::File(ref t) => t.field(f),
-            &Resource::Piece(ref t) => t.field(f),
-            &Resource::Peer(ref t) => t.field(f),
-            &Resource::Tracker(ref t) => t.field(f),
+            Resource::Server(t) => t.field(f),
+            Resource::Torrent(t) => t.field(f),
+            Resource::File(t) => t.field(f),
+            Resource::Piece(t) => t.field(f),
+            Resource::Peer(t) => t.field(f),
+            Resource::Tracker(t) => t.field(f),
         }
     }
 }
@@ -839,18 +804,18 @@ impl Queryable for json::Value {
         match self.pointer(f) {
             Some(&json::Value::Null) => Some(FNULL),
             Some(&json::Value::Bool(b)) => Some(Field::B(b)),
-            Some(&json::Value::Number(ref n)) => {
+            Some(json::Value::Number(n)) => {
                 if n.is_f64() {
                     Some(Field::F(n.as_f64().unwrap() as f32))
                 } else {
                     Some(Field::N(n.as_i64().unwrap()))
                 }
             }
-            Some(&json::Value::String(ref s)) => Some(Field::S(s)),
-            Some(&json::Value::Array(ref a)) => {
+            Some(json::Value::String(s)) => Some(Field::S(s)),
+            Some(json::Value::Array(a)) => {
                 Some(Field::V(a.iter().filter_map(|v| v.field("")).collect()))
             }
-            Some(&json::Value::Object(_)) => None,
+            Some(json::Value::Object(_)) => None,
             None => None,
         }
     }
@@ -863,8 +828,8 @@ impl Queryable for Server {
 
             "rate_up" => Some(Field::N(self.rate_up as i64)),
             "rate_down" => Some(Field::N(self.rate_down as i64)),
-            "throttle_up" => Some(self.throttle_up.map(|v| Field::N(v)).unwrap_or(FNULL)),
-            "throttle_down" => Some(self.throttle_down.map(|v| Field::N(v)).unwrap_or(FNULL)),
+            "throttle_up" => Some(self.throttle_up.map(Field::N).unwrap_or(FNULL)),
+            "throttle_down" => Some(self.throttle_down.map(Field::N).unwrap_or(FNULL)),
             "transferred_up" => Some(Field::N(self.transferred_up as i64)),
             "transferred_down" => Some(Field::N(self.transferred_down as i64)),
             "ses_transferred_up" => Some(Field::N(self.ses_transferred_up as i64)),
@@ -915,8 +880,8 @@ impl Queryable for Torrent {
             "priority" => Some(Field::N(self.priority as i64)),
             "rate_up" => Some(Field::N(self.rate_up as i64)),
             "rate_down" => Some(Field::N(self.rate_down as i64)),
-            "throttle_up" => Some(self.throttle_up.map(|v| Field::N(v)).unwrap_or(FNULL)),
-            "throttle_down" => Some(self.throttle_down.map(|v| Field::N(v)).unwrap_or(FNULL)),
+            "throttle_up" => Some(self.throttle_up.map(Field::N).unwrap_or(FNULL)),
+            "throttle_down" => Some(self.throttle_down.map(Field::N).unwrap_or(FNULL)),
             "transferred_up" => Some(Field::N(self.transferred_up as i64)),
             "transferred_down" => Some(Field::N(self.transferred_down as i64)),
             "peers" => Some(Field::N(self.peers as i64)),
@@ -1057,12 +1022,6 @@ pub fn merge_json(original: &mut json::Value, update: &mut json::Value) {
         (o, u) => {
             mem::swap(o, u);
         }
-    }
-}
-
-impl Default for Status {
-    fn default() -> Self {
-        Status::Pending
     }
 }
 

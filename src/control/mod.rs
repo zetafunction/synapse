@@ -311,10 +311,12 @@ impl<T: cio::CIO> Control<T> {
             trace!("Adding peer({:?})!", ip);
             match peer::PeerConn::new_outgoing(ip) {
                 Ok(peer) => {
-                  trace!("Added peer({:?})!", ip);
-                  self.add_peer(id, peer);
+                    trace!("Added peer({:?})!", ip);
+                    self.add_peer(id, peer);
                 }
-                Err(e) => { trace!("Failed to add peer: {:?}", e); }
+                Err(e) => {
+                    trace!("Failed to add peer: {:?}", e);
+                }
             }
         }
     }
@@ -391,10 +393,8 @@ impl<T: cio::CIO> Control<T> {
                     torrent.update_rpc_peers();
                 }
             }
-        } else if self.incoming.remove(&pid) {
-            if self.inc_handshake(pid, ev).is_err() {
-                self.cio.remove_peer(pid);
-            }
+        } else if self.incoming.remove(&pid) && self.inc_handshake(pid, ev).is_err() {
+            self.cio.remove_peer(pid);
         }
     }
 

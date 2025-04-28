@@ -1,8 +1,6 @@
 use std::sync::{atomic, mpsc};
 use std::{io, process, thread};
 
-use ctrlc;
-
 use crate::control::acio;
 use crate::{args, control, disk, log, rpc, throttle, tracker};
 use crate::{CONFIG, SHUTDOWN, THROT_TOKS};

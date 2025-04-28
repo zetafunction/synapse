@@ -295,10 +295,7 @@ impl Handler {
         let mut resp = TrackerResponse::empty();
         let transaction_id = announce_resp.read_u32::<BigEndian>().unwrap();
 
-        let id = match self.transactions.remove(&transaction_id) {
-            Some(id) => id,
-            None => return None,
-        };
+        let id = self.transactions.remove(&transaction_id)?;
 
         let conn = self.connections.remove(&id)?;
 

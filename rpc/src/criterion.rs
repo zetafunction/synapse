@@ -82,6 +82,7 @@ impl Criterion {
         }
     }
 
+    #[allow(clippy::only_used_in_recursion)]
     fn match_field(&self, field: &Field<'_>, op: Operation, value: &Value) -> bool {
         match (field, value) {
             (Field::V(items), Value::V(vals)) => match op {
@@ -178,12 +179,6 @@ impl Criterion {
             (&Field::E(_), _) => matches!(op, Operation::Neq),
             _ => matches!(op, Operation::Neq),
         }
-    }
-}
-
-impl Default for ResourceKind {
-    fn default() -> ResourceKind {
-        ResourceKind::Torrent
     }
 }
 

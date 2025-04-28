@@ -52,7 +52,7 @@ impl Choker {
         if let Some(random_id) = random_sample(self.interested.iter()).cloned() {
             peers.get_mut(&random_id).map(|mut peer| {
                 self.interested.remove(&random_id);
-                self.add_peer(&mut peer);
+                self.add_peer(peer);
                 random_id
             })
         } else {
