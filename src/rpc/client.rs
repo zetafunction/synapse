@@ -1,6 +1,7 @@
 use std::io::{self, Write};
 use std::{mem, result, str, time};
 
+use base64::prelude::{Engine, BASE64_STANDARD};
 use sstream::SStream;
 use url::Url;
 
@@ -130,7 +131,7 @@ impl From<Incoming> for Client {
     fn from(mut incoming: Incoming) -> Self {
         let magic = incoming.key.unwrap() + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
         let digest = sha1_hash(magic.as_bytes());
-        let accept = base64::encode(digest.as_ref());
+        let accept = BASE64_STANDARD.encode(digest.as_ref());
         let lines = [
             "HTTP/1.1 101 Switching Protocols".into(),
             "Connection: upgrade".into(),
@@ -304,7 +305,7 @@ fn validate_dl(req: &httparse::Request<'_, '_>) -> Option<(String, Option<String
                     .query_pairs()
                     .find(|(k, _)| k == "token")
                     .map(|(_, v)| format!("{}", v))
-                    .and_then(|p| base64::decode(&p).ok())
+                    .and_then(|p| BASE64_STANDARD.decode(&p).ok())
                     .map(|p| {
                         p.as_ref()
                             == sha1_hash(
@@ -399,7 +400,7 @@ fn validate_upgrade(req: &httparse::Request<'_, '_>) -> result::Result<String, b
                             None
                         }
                     })
-                    .and_then(|auth| base64::decode(auth).ok())
+                    .and_then(|auth| BASE64_STANDARD.decode(auth).ok())
                     .and_then(|auth| String::from_utf8(auth).ok())
                     .and_then(|auth| {
                         auth.split_terminator(':')

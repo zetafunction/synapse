@@ -3,6 +3,7 @@ use std::io::{self, Read};
 use std::path::Path;
 use std::{cmp, fs, mem};
 
+use base64::prelude::{Engine, BASE64_STANDARD};
 use prettytable::format::consts::FORMAT_NO_LINESEP_WITH_TITLE as TABLE_FORMAT;
 use prettytable::Table;
 use sha1::{Digest, Sha1};
@@ -192,7 +193,7 @@ pub fn dl(mut c: Client, url: &str, name: &str) -> Result<()> {
             .push("dl")
             .push(file.id());
         let digest = Sha1::digest(format!("{}{}", file.id(), token).as_bytes());
-        let dl_token = base64::encode(&digest.as_slice());
+        let dl_token = BASE64_STANDARD.encode(digest.as_slice());
         let resp = ureq::get(dl_url.as_str()).query("token", &dl_token).call();
         if resp.error() {
             bail!("Failed to download from synapse: {:?}", resp);

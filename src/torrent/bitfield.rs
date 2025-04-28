@@ -1,5 +1,7 @@
 use std::fmt;
 
+use base64::prelude::{Engine, BASE64_STANDARD};
+
 use crate::protocol;
 
 // Use u64 than usize because it conforms with bittorents network protocol
@@ -214,7 +216,7 @@ impl Bitfield {
     }
 
     pub fn b64(&self) -> String {
-        base64::encode(&self.data())
+        BASE64_STANDARD.encode(&self.data())
     }
 
     pub fn iter(&self) -> BitfieldIter<'_> {
