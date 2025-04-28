@@ -271,10 +271,7 @@ impl Request {
     }
 
     pub fn concurrent(&self) -> bool {
-        match self {
-            Request::Validate { .. } => false,
-            _ => true,
-        }
+        !matches!(self, Request::Validate { .. })
     }
 
     pub fn execute(self, fc: &mut FileCache, bc: &mut BufCache) -> io::Result<JobRes> {
@@ -318,7 +315,7 @@ impl Request {
                     let pb = tpb.get(path.as_ref().unwrap_or(dd));
                     pb.push(loc.path());
                     fc.write_file_range(
-                        &pb,
+                        pb,
                         if loc.allocate {
                             Ok(loc.file_len)
                         } else {
@@ -328,7 +325,7 @@ impl Request {
                         &data[loc.start..loc.end],
                     )?;
                     if loc.end - loc.start != 16_384 {
-                        fc.flush_file(&pb);
+                        fc.flush_file(pb);
                     }
                 }
             }
@@ -342,7 +339,7 @@ impl Request {
                 for loc in locations {
                     let pb = tpb.get(path.as_ref().unwrap_or(dd));
                     pb.push(loc.path());
-                    fc.read_file_range(&pb, loc.offset, &mut data[loc.start..loc.end])?;
+                    fc.read_file_range(pb, loc.offset, &mut data[loc.start..loc.end])?;
                 }
                 return Ok(JobRes::Resp(Response::read(context, data)));
             }
@@ -573,7 +570,7 @@ impl Request {
                         // or the final boundary if we're done with all chunks
                         if multipart {
                             let http_lines = match ranges.last() {
-                                Some(cur_range) => vec![
+                                Some(cur_range) => [
                                     format!("\r\n--{}", MP_BOUNDARY),
                                     format!("Content-Type: application/octet-stream"),
                                     format!(

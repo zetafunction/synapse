@@ -36,7 +36,7 @@ impl UnlimitedOrU64 {
 
 impl PartialEq<usize> for UnlimitedOrU64 {
     fn eq(&self, other: &usize) -> bool {
-        self.0.map_or(false, |val| val.get() == *other as u64)
+        self.0.is_some_and(|val| val.get() == *other as u64)
     }
 }
 

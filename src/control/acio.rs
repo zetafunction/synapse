@@ -243,11 +243,7 @@ impl cio::CIO for ACIO {
         pid: cio::PID,
         f: F,
     ) -> Option<T> {
-        if let Some(p) = self.data.borrow_mut().peers.get_mut(&pid) {
-            Some(f(p))
-        } else {
-            None
-        }
+        self.data.borrow_mut().peers.get_mut(&pid).map(|p| f(p))
     }
 
     fn remove_peer(&self, peer: cio::PID) {
@@ -273,7 +269,7 @@ impl cio::CIO for ACIO {
             }
         }
 
-        d.events.extend(events.drain(..));
+        d.events.append(&mut events);
     }
 
     fn msg_peer(&mut self, pid: cio::PID, msg: torrent::Message) {

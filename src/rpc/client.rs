@@ -131,7 +131,7 @@ impl Into<Client> for Incoming {
         let magic = self.key.unwrap() + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
         let digest = sha1_hash(magic.as_bytes());
         let accept = base64::encode(digest.as_ref());
-        let lines = vec![
+        let lines = [
             format!("HTTP/1.1 101 Switching Protocols"),
             format!("Connection: upgrade"),
             format!("Upgrade: websocket"),

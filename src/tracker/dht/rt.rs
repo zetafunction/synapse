@@ -668,11 +668,7 @@ impl Node {
     }
 
     fn good(&self) -> bool {
-        if let NodeState::Good = self.state {
-            true
-        } else {
-            false
-        }
+        matches!(self.state, NodeState::Good)
     }
 
     fn new_token(&mut self) {
@@ -705,11 +701,11 @@ impl From<proto::Node> for Node {
     }
 }
 
-impl<'a> Into<proto::Node> for &'a Node {
-    fn into(self) -> proto::Node {
+impl From<&Node> for proto::Node {
+    fn from(node: &Node) -> Self {
         proto::Node {
-            id: self.id.clone(),
-            addr: self.addr,
+            id: node.id.clone(),
+            addr: node.addr,
         }
     }
 }
