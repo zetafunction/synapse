@@ -39,7 +39,7 @@ sha-1 = "0.10.1"
 serde = "1"
 serde_derive = "1"
 serde_json = "1"
-shellexpand = "1"
+shellexpand = "3.1"
 synapse-rpc = { path = "rpc" }
 synapse-session = { path = "session" }
 synapse-bencode = { path = "bencode" }
