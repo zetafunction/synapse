@@ -50,7 +50,7 @@ impl Client {
                 .get_stream()
                 .set_nonblocking(false)
                 .chain_err(|| ErrorKind::Websocket)?;
-            if let Ok((client, _response)) = ws::client(url.clone(), stream) {
+            if let Ok((client, _response)) = ws::client(url.as_str(), stream) {
                 let mut c = Client {
                     ws: client,
                     serial: 0,
@@ -79,20 +79,20 @@ impl Client {
     pub fn send(&mut self, msg: CMessage) -> Result<()> {
         let msg_data = serde_json::to_string(&msg).chain_err(|| ErrorKind::Serialization)?;
         self.ws
-            .write_message(WSMessage::Text(msg_data))
+            .send(WSMessage::Text(msg_data.into()))
             .chain_err(|| ErrorKind::Websocket)?;
         Ok(())
     }
 
     pub fn recv(&mut self) -> Result<SMessage<'static>> {
         loop {
-            match self.ws.read_message() {
+            match self.ws.read() {
                 Ok(WSMessage::Text(s)) => {
                     return serde_json::from_str(&s).chain_err(|| ErrorKind::Deserialization);
                 }
                 Ok(WSMessage::Ping(p)) => {
                     self.ws
-                        .write_message(WSMessage::Pong(p))
+                        .send(WSMessage::Pong(p))
                         .chain_err(|| ErrorKind::Websocket)?;
                 }
                 Err(e) => return Err(e).chain_err(|| ErrorKind::Websocket),
