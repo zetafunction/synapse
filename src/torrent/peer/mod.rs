@@ -262,7 +262,7 @@ impl<T: cio::CIO> Peer<T> {
             pieces_updated: false,
             rank: t.num_peers(),
         };
-        p.send_message(Message::handshake(&*PEER_ID, &t.info.hash));
+        p.send_message(Message::handshake(&PEER_ID, &t.info.hash));
         if t.info.complete() {
             p.send_message(Message::Bitfield(t.pieces.clone()));
         }

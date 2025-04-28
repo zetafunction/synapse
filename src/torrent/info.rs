@@ -102,7 +102,7 @@ impl Info {
         };
         let hash =
             url.query_pairs()
-                .find(|&(ref k, ref v)| k == "xt" && v.starts_with("urn:btih:"))
+                .find(|(k, v)| k == "xt" && v.starts_with("urn:btih:"))
                 .and_then(|(_, ref v)| {
                     id_to_hash(&v[9..]).or_else(|| {
                         base32::decode(base32::Alphabet::Rfc4648 { padding: true }, &v[9..])
@@ -111,7 +111,7 @@ impl Info {
                                     return None;
                                 }
                                 let mut a = [0; 20];
-                                (&mut a[..]).copy_from_slice(&b);
+                                (a[..]).copy_from_slice(&b);
                                 Some(a)
                             })
                     })
@@ -120,7 +120,7 @@ impl Info {
 
         let mut url_list: Vec<_> = url
             .query_pairs()
-            .filter(|&(ref k, _)| k == "tr")
+            .filter(|(k, _)| k == "tr")
             .filter_map(|(_, ref v)| Url::parse(v).ok())
             .map(Arc::new)
             .collect();
@@ -128,7 +128,7 @@ impl Info {
 
         let name = url
             .query_pairs()
-            .find(|&(ref k, _)| k == "dn")
+            .find(|(k, _)| k == "dn")
             .map(|(_, ref v)| v.to_string())
             .unwrap_or_else(|| "".to_owned());
         Ok(Info {
@@ -306,12 +306,12 @@ impl Info {
                 let url_list: Vec<_> = d
                     .remove(b"announce-list".as_ref())
                     .and_then(BEncode::into_list)
-                    .unwrap_or_else(Vec::new)
+                    .unwrap_or_default()
                     .into_iter()
                     .map(|l| {
                         let mut l: Vec<_> = l
                             .into_list()
-                            .unwrap_or_else(Vec::new)
+                            .unwrap_or_default()
                             .into_iter()
                             .filter_map(BEncode::into_string)
                             .filter_map(|s| Url::parse(&s).ok().map(Arc::new))

@@ -124,8 +124,8 @@ impl Processor {
 
     pub fn get_dl(&self, id: &str) -> Option<(String, u64)> {
         match self.resources.get(id) {
-            Some(&Resource::File(ref f)) => match self.resources.get(&f.torrent_id) {
-                Some(&Resource::Torrent(ref t)) => Some((t.path.clone() + "/" + &f.path, f.size)),
+            Some(Resource::File(f)) => match self.resources.get(&f.torrent_id) {
+                Some(Resource::Torrent(t)) => Some((t.path.clone() + "/" + &f.path, f.size)),
                 _ => None,
             },
             _ => None,
@@ -206,7 +206,7 @@ impl Processor {
                 serial,
                 mut resource,
             } => {
-                let udo = mem::replace(&mut resource.user_data, None);
+                let udo = resource.user_data.take();
                 if let Some(user_data) = udo.clone() {
                     let mut modified = false;
                     if let Some(res) = self.resources.get_mut(&resource.id) {
@@ -230,10 +230,10 @@ impl Processor {
                 resource.user_data = udo;
 
                 match self.resources.get(&resource.id) {
-                    Some(&Resource::Torrent(_)) => {
+                    Some(Resource::Torrent(_)) => {
                         rmsg = Some(Message::UpdateTorrent(resource));
                     }
-                    Some(&Resource::File(ref f)) => {
+                    Some(Resource::File(f)) => {
                         // TODO: Validate other fields(make sure they're not present)
                         if let Some(p) = resource.priority {
                             rmsg = Some(Message::UpdateFile {
@@ -243,7 +243,7 @@ impl Processor {
                             });
                         }
                     }
-                    Some(&Resource::Server(_)) => {
+                    Some(Resource::Server(_)) => {
                         rmsg = Some(Message::UpdateServer {
                             id: resource.id,
                             throttle_up: resource.throttle_up,
@@ -264,7 +264,7 @@ impl Processor {
                 id,
                 artifacts,
             } => match self.resources.get(&id) {
-                Some(&Resource::Torrent(_)) => {
+                Some(Resource::Torrent(_)) => {
                     rmsg = Some(Message::RemoveTorrent {
                         id,
                         client,
@@ -272,7 +272,7 @@ impl Processor {
                         artifacts: artifacts.unwrap_or(false),
                     });
                 }
-                Some(&Resource::Tracker(ref t)) => {
+                Some(Resource::Tracker(t)) => {
                     rmsg = Some(Message::RemoveTracker {
                         id,
                         torrent_id: t.torrent_id.to_owned(),
@@ -280,7 +280,7 @@ impl Processor {
                         serial,
                     });
                 }
-                Some(&Resource::Peer(ref p)) => {
+                Some(Resource::Peer(p)) => {
                     rmsg = Some(Message::RemovePeer {
                         id,
                         torrent_id: p.torrent_id.to_owned(),
@@ -291,7 +291,7 @@ impl Processor {
                 Some(_) => {
                     resp.push(SMessage::InvalidResource(Error {
                         serial: Some(serial),
-                        reason: format!("Only torrents, trackers, and peers may be removed"),
+                        reason: "Only torrents, trackers, and peers may be removed".into(),
                     }));
                 }
                 None => {
@@ -442,7 +442,7 @@ impl Processor {
                 })),
             },
             CMessage::UpdateTracker { serial, id } => match self.resources.get(&id) {
-                Some(&Resource::Tracker(ref t)) => {
+                Some(Resource::Tracker(t)) => {
                     rmsg = Some(Message::UpdateTracker {
                         id,
                         torrent_id: t.torrent_id.clone(),
@@ -707,11 +707,11 @@ impl Processor {
                 continue;
             };
             for (k, f) in self.filter_subs.iter() {
-                if f.kind == res.kind() && f.matches(&res, torrent_idx, rkind, resources) {
+                if f.kind == res.kind() && f.matches(res, torrent_idx, rkind, resources) {
                     if !matched.contains_key(k) {
-                        matched.insert(k.clone(), Vec::new());
+                        matched.insert(*k, Vec::new());
                     }
-                    matched.get_mut(&k).unwrap().push(Cow::Borrowed(id));
+                    matched.get_mut(k).unwrap().push(Cow::Borrowed(id));
                 }
             }
         }
@@ -769,7 +769,7 @@ impl Filter {
         }
 
         // Proxy queryable implementation to redirect subresource requests
-        impl<'a> rpc_lib::criterion::Queryable for QueryProxy<'a> {
+        impl rpc_lib::criterion::Queryable for QueryProxy<'_> {
             fn field(&self, field: &str) -> Option<rpc_lib::criterion::Field<'_>> {
                 self.r.field(field).map(|f| match f {
                     rpc_lib::criterion::Field::R(k) => {

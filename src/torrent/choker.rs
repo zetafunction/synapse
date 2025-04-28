@@ -97,13 +97,16 @@ impl Choker {
         if self.interested.is_empty() {
             return None;
         }
-        let (slowest, _) = self.unchoked.iter().enumerate().fold(
-            (0, std::u32::MAX),
-            |(slowest, min), (idx, id)| match peers.get_mut(id).map(Peer::flush) {
-                Some((ul, _)) if ul < min => (idx, ul),
-                _ => (slowest, min),
-            },
-        );
+        let (slowest, _) =
+            self.unchoked
+                .iter()
+                .enumerate()
+                .fold((0, u32::MAX), |(slowest, min), (idx, id)| {
+                    match peers.get_mut(id).map(Peer::flush) {
+                        Some((ul, _)) if ul < min => (idx, ul),
+                        _ => (slowest, min),
+                    }
+                });
         self.swap_peer(slowest, peers)
     }
 
@@ -115,13 +118,16 @@ impl Choker {
             return None;
         }
 
-        let (slowest, _) = self.unchoked.iter().enumerate().fold(
-            (0, std::u32::MAX),
-            |(slowest, min), (idx, id)| match peers.get_mut(id).map(Peer::flush) {
-                Some((_, dl)) if dl < min => (idx, dl),
-                _ => (slowest, min),
-            },
-        );
+        let (slowest, _) =
+            self.unchoked
+                .iter()
+                .enumerate()
+                .fold((0, u32::MAX), |(slowest, min), (idx, id)| {
+                    match peers.get_mut(id).map(Peer::flush) {
+                        Some((_, dl)) if dl < min => (idx, dl),
+                        _ => (slowest, min),
+                    }
+                });
         self.swap_peer(slowest, peers)
     }
 

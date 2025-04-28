@@ -49,7 +49,7 @@ impl Picker {
         let mut p = vec![];
         for i in &pieces[0] {
             p.push(Piece {
-                pos: *i as u32,
+                pos: *i,
                 status: PieceStatus::Complete,
             })
         }
@@ -58,7 +58,7 @@ impl Picker {
         for i in (1..6).rev() {
             for j in &pieces[i] {
                 p.push(Piece {
-                    pos: *j as u32,
+                    pos: *j,
                     status: PieceStatus::Incomplete,
                 })
             }
@@ -93,7 +93,7 @@ impl Picker {
             .pieces
             .iter_mut()
             .enumerate()
-            .find(|&(_, ref p)| p.pos == idx)
+            .find(|(_, p)| p.pos == idx)
         {
             p.status = PieceStatus::Incomplete;
             *piece_idx = idx;
