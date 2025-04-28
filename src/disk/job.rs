@@ -361,8 +361,7 @@ impl Request {
                             // `fs_extra::dir::copy()` behaves like `cp -r`, so the destination
                             // path should not include `target`.
                             let tp = tp.parent().unwrap();
-                            match fs_extra::dir::copy(&fp, &tp, &fs_extra::dir::CopyOptions::new())
-                            {
+                            match fs_extra::dir::copy(&fp, tp, &fs_extra::dir::CopyOptions::new()) {
                                 Ok(_) => {
                                     fs::remove_dir_all(&fp)?;
                                 }
@@ -429,8 +428,8 @@ impl Request {
 
                 for file in &files {
                     let pb = tpb2.get(path.as_ref().unwrap_or(dd));
-                    pb.push(&file);
-                    fc.remove_file(&pb);
+                    pb.push(file);
+                    fc.remove_file(pb);
                     if artifacts {
                         if let Err(e) = fs::remove_file(&pb) {
                             debug!("Failed to delete file: {:?}, {}", pb, e);
@@ -438,12 +437,12 @@ impl Request {
                     }
                 }
 
-                if let Some(p) = files.get(0) {
+                if let Some(p) = files.first() {
                     let comp = p.components().next().unwrap();
                     let dirp: &Path = comp.as_os_str().as_ref();
                     let pb = tpb.get(path.as_ref().unwrap_or(dd));
-                    pb.push(&dirp);
-                    fs::remove_dir(&pb).ok();
+                    pb.push(dirp);
+                    fs::remove_dir(pb).ok();
                 }
             }
             Request::ValidatePiece {
@@ -458,7 +457,7 @@ impl Request {
                 for loc in locs {
                     let pb = tpb.get(path.as_ref().unwrap_or(dd));
                     pb.push(loc.path());
-                    fc.read_file_range(&pb, loc.offset, &mut buf[loc.start..loc.end])
+                    fc.read_file_range(pb, loc.offset, &mut buf[loc.start..loc.end])
                         .map(|_| ctx.update(&buf[loc.start..loc.end]))
                         .ok();
                 }
@@ -492,7 +491,7 @@ impl Request {
                         let pb = tpb.get(path.as_ref().unwrap_or(dd));
                         pb.push(loc.path());
                         valid &= fc
-                            .read_file_range(&pb, loc.offset, &mut buf[loc.start..loc.end])
+                            .read_file_range(pb, loc.offset, &mut buf[loc.start..loc.end])
                             .map(|_| ctx.update(&buf[loc.start..loc.end]))
                             .is_ok();
                     }
@@ -572,14 +571,14 @@ impl Request {
                             let http_lines = match ranges.last() {
                                 Some(cur_range) => [
                                     format!("\r\n--{}", MP_BOUNDARY),
-                                    format!("Content-Type: application/octet-stream"),
+                                    "Content-Type: application/octet-stream".into(),
                                     format!(
                                         "Content-Range: bytes {}-{}/{}",
                                         cur_range.start,
                                         cur_range.start + cur_range.length - 1,
                                         file_len
                                     ),
-                                    format!("\r\n"),
+                                    "\r\n".into(),
                                 ]
                                 .join("\r\n"),
                                 None => format!("\r\n--{}--", MP_BOUNDARY),

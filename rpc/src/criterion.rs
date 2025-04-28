@@ -84,7 +84,7 @@ impl Criterion {
 
     fn match_field(&self, field: &Field<'_>, op: Operation, value: &Value) -> bool {
         match (field, value) {
-            (&Field::V(ref items), &Value::V(ref vals)) => match op {
+            (Field::V(items), Value::V(vals)) => match op {
                 Operation::Eq => items
                     .iter()
                     .zip(vals)
@@ -95,7 +95,7 @@ impl Criterion {
                     .any(|(f, v)| self.match_field(f, Operation::Neq, v)),
                 _ => false,
             },
-            (&Field::V(ref items), v) => match op {
+            (Field::V(items), v) => match op {
                 Operation::Has => items.iter().any(|f| {
                     self.match_field(f, Operation::Eq, v)
                         || self.match_field(f, Operation::ILike, v)
@@ -108,7 +108,7 @@ impl Criterion {
                 // we default to the existential and apply the requested operator.
                 _ => items.iter().any(|f| self.match_field(f, op, v)),
             },
-            (f, &Value::V(ref v)) => match op {
+            (f, Value::V(v)) => match op {
                 Operation::In => v
                     .iter()
                     .any(|item| self.match_field(f, Operation::Eq, item)),
@@ -122,7 +122,7 @@ impl Criterion {
                 Operation::Neq => f != v,
                 _ => false,
             },
-            (&Field::S(ref f), &Value::S(ref v)) => match op {
+            (&Field::S(f), Value::S(v)) => match op {
                 Operation::Eq => f == v,
                 Operation::Neq => f != v,
                 Operation::Like => match_like(v, f),
@@ -174,18 +174,9 @@ impl Criterion {
                 Operation::LT => f < v,
                 _ => false,
             },
-            (&Field::E(_), &Value::E(_)) => match op {
-                Operation::Eq => true,
-                _ => false,
-            },
-            (&Field::E(_), _) => match op {
-                Operation::Neq => true,
-                _ => false,
-            },
-            _ => match op {
-                Operation::Neq => true,
-                _ => false,
-            },
+            (&Field::E(_), &Value::E(_)) => matches!(op, Operation::Eq),
+            (&Field::E(_), _) => matches!(op, Operation::Neq),
+            _ => matches!(op, Operation::Neq),
         }
     }
 }
