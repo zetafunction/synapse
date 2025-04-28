@@ -56,7 +56,7 @@ impl<'a> RequestBuilder<'a> {
     }
 }
 
-impl<'a> RequestBuilder<'a> {
+impl RequestBuilder<'_> {
     pub fn encode(&self, buf: &mut Vec<u8>) {
         buf.extend_from_slice(self.method.as_bytes());
         buf.extend_from_slice(b" ");

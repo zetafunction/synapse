@@ -34,7 +34,7 @@ pub struct TempBuf<'a> {
     buf: &'a mut Vec<u8>,
 }
 
-impl<'a> TempBuf<'a> {
+impl TempBuf<'_> {
     pub fn get(&mut self, len: usize) -> &mut [u8] {
         self.buf.reserve(len);
         if self.buf.len() < len {
@@ -50,7 +50,7 @@ fn get_pb(buf: &mut OsString) -> TempPB<'_> {
     TempPB { buf, path }
 }
 
-impl<'a> TempPB<'a> {
+impl TempPB<'_> {
     pub fn get<P: AsRef<path::Path>>(&mut self, base: P) -> &mut path::PathBuf {
         self.clear();
         self.path.push(base.as_ref());
@@ -65,7 +65,7 @@ impl<'a> TempPB<'a> {
     }
 }
 
-impl<'a> Drop for TempPB<'a> {
+impl Drop for TempPB<'_> {
     fn drop(&mut self) {
         let mut path =
             mem::replace(&mut self.path, OsString::with_capacity(0).into()).into_os_string();
@@ -122,7 +122,7 @@ impl FileCache {
         self.ensure_exists(path, size)?;
         let entry = self.files.get_mut(path).unwrap();
         entry.file.seek(SeekFrom::Start(offset))?;
-        entry.file.write_all(&buf)?;
+        entry.file.write_all(buf)?;
         Ok(())
     }
 

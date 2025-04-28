@@ -78,7 +78,7 @@ lazy_static! {
         let mut table = IpNetworkTable::new();
 
         for k in CONFIG.ip_filter.keys() {
-            table.insert(k.clone(), CONFIG.ip_filter[k]);
+            table.insert(*k, CONFIG.ip_filter[k]);
             debug!(
                 "Add ip_filter entry: prefix={}, weight={}",
                 k, CONFIG.ip_filter[k]

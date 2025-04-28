@@ -131,10 +131,7 @@ impl ConfigFile {
     pub fn try_load() -> Result<ConfigFile> {
         let args = args::args();
         let files = [
-            args.config
-                .as_ref()
-                .map(String::as_str)
-                .unwrap_or("./config.toml"),
+            args.config.as_deref().unwrap_or("./config.toml"),
             "$XDG_CONFIG_HOME/synapse.toml",
             "~/.config/synapse.toml",
         ];

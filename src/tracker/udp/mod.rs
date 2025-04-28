@@ -226,17 +226,11 @@ impl Handler {
             (tid, cid)
         };
 
-        let id = match self.transactions.remove(&transaction_id) {
-            Some(id) => id,
-            None => return None,
-        };
+        let id = self.transactions.remove(&transaction_id)?;
 
         let mut data = [0u8; 98];
         {
-            let conn = match self.connections.get_mut(&id) {
-                Some(conn) => conn,
-                None => return None,
-            };
+            let conn = self.connections.get_mut(&id)?;
             let addr = match conn.state {
                 State::Connecting { addr, .. } => addr,
                 _ => return None,
@@ -255,13 +249,13 @@ impl Handler {
                 announce_req.write_all(&conn.announce.hash).unwrap();
                 announce_req.write_all(&PEER_ID[..]).unwrap();
                 announce_req
-                    .write_u64::<BigEndian>(conn.announce.downloaded as u64)
+                    .write_u64::<BigEndian>(conn.announce.downloaded)
                     .unwrap();
                 announce_req
-                    .write_u64::<BigEndian>(conn.announce.left as u64)
+                    .write_u64::<BigEndian>(conn.announce.left)
                     .unwrap();
                 announce_req
-                    .write_u64::<BigEndian>(conn.announce.uploaded as u64)
+                    .write_u64::<BigEndian>(conn.announce.uploaded)
                     .unwrap();
                 match conn.announce.event {
                     Some(Event::Started) => {
@@ -306,10 +300,7 @@ impl Handler {
             None => return None,
         };
 
-        let conn = match self.connections.remove(&id) {
-            Some(c) => c,
-            None => return None,
-        };
+        let conn = self.connections.remove(&id)?;
 
         resp.interval = announce_resp.read_u32::<BigEndian>().unwrap();
         resp.leechers = announce_resp.read_u32::<BigEndian>().unwrap();
@@ -332,15 +323,9 @@ impl Handler {
         let mut connect_resp = Cursor::new(&self.buf[4..len]);
         let transaction_id = connect_resp.read_u32::<BigEndian>().unwrap();
 
-        let id = match self.transactions.remove(&transaction_id) {
-            Some(id) => id,
-            None => return None,
-        };
+        let id = self.transactions.remove(&transaction_id)?;
 
-        let conn = match self.connections.remove(&id) {
-            Some(c) => c,
-            None => return None,
-        };
+        let conn = self.connections.remove(&id)?;
 
         if connect_resp.read_to_string(&mut s).is_err() {
             let resp = Err(ErrorKind::InvalidResponse(

@@ -35,7 +35,7 @@ const CLEANUP_INT_MS: usize = 2000;
 
 lazy_static! {
     pub static ref EMPTY_HTTP_RESP: Vec<u8> = {
-        let lines = vec![
+        let lines = [
             format!("HTTP/1.1 {} {}", 200, "OK"),
             format!("Connection: {}", "Close"),
             format!("Access-Control-Allow-Origin: {}", "*"),
@@ -57,7 +57,7 @@ lazy_static! {
         lines.join("\r\n").into_bytes()
     };
     pub static ref UNAUTH_HTTP_RESP: Vec<u8> = {
-        let lines = vec![
+        let lines = [
             format!("HTTP/1.1 {} {}", 401, "Unauthorized"),
             format!("Connection: {}", "Close"),
             format!("WWW-Authenticate: Basic real=m\"{}\"", "Synapse Connection"),
@@ -66,7 +66,7 @@ lazy_static! {
         lines.join("\r\n").into_bytes()
     };
     pub static ref BAD_HTTP_RANGE: Vec<u8> = {
-        let lines = vec![
+        let lines = [
             format!("HTTP/1.1 {} {}", 416, "Requested Range Not Satisfiable"),
             format!("Connection: {}", "Close"),
             "\r\n".to_string(),

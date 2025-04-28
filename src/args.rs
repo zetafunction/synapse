@@ -45,7 +45,7 @@ pub fn args() -> Args {
 }
 
 fn usage(code: i32, opts: Options) -> ! {
-    let brief = format!("Usage: synapse [options]");
+    let brief = "Usage: synapse [options]";
     print!("{}", opts.usage(&brief));
     process::exit(code);
 }
