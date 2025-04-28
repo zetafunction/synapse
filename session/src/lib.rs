@@ -270,7 +270,7 @@ pub mod torrent {
                         break;
                     }
                 }
-                if self.pieces.data.len() > 0 {
+                if !self.pieces.data.is_empty() {
                     match (self.pieces.len % 8, *self.pieces.data.last().unwrap()) {
                         (0, 0xFF)
                         | (7, 0xFE)
@@ -283,10 +283,7 @@ pub mod torrent {
                         _ => state = next::StatusState::Incomplete,
                     }
                 }
-                let paused = match self.status {
-                    Status::Paused => true,
-                    _ => false,
-                };
+                let paused = matches!(self.status, Status::Paused);
                 let piece_idx = generate_piece_idx(
                     self.info.hashes.len(),
                     self.info.piece_len as u64,
@@ -295,7 +292,7 @@ pub mod torrent {
                 next::Session {
                     info: next::Info {
                         name: self.info.name,
-                        announce: if self.info.announce == "" {
+                        announce: if self.info.announce.is_empty() {
                             None
                         } else {
                             Some(self.info.announce)

@@ -72,7 +72,7 @@ impl Disk {
     }
 
     fn enqueue_req(&mut self, req: Request) {
-        if req.concurrent() || self.active.iter().find(|r| !r.concurrent()).is_none() {
+        if req.concurrent() || !self.active.iter().any(|r| !r.concurrent()) {
             self.active.push_back(req);
         } else {
             self.sequential.push_back(req);

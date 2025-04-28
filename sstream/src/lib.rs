@@ -5,8 +5,6 @@ use std::sync::Arc;
 
 use net2::{TcpBuilder, TcpStreamExt};
 use rustls::{self, Session};
-use webpki;
-use webpki_roots;
 
 const EINPROGRESS: i32 = 115;
 
@@ -168,7 +166,7 @@ impl io::Read for SStream {
                 if e.kind() == io::ErrorKind::ConnectionAborted {
                     return Ok(0);
                 }
-                return Err(e);
+                Err(e)
             }
         }
     }

@@ -71,9 +71,9 @@ impl Resolver {
         let servers: Vec<_> = cfg
             .nameservers
             .into_iter()
-            .filter_map(|ip| match ip {
-                resolv_conf::ScopedIp::V4(ip) => Some(SocketAddr::new(IpAddr::V4(ip), 53)),
-                resolv_conf::ScopedIp::V6(ip, _) => Some(SocketAddr::new(IpAddr::V6(ip), 53)),
+            .map(|ip| match ip {
+                resolv_conf::ScopedIp::V4(ip) => SocketAddr::new(IpAddr::V4(ip), 53),
+                resolv_conf::ScopedIp::V6(ip, _) => SocketAddr::new(IpAddr::V6(ip), 53),
             })
             .collect();
 
@@ -114,7 +114,7 @@ impl Resolver {
         if let Ok(entry) = domain.parse() {
             return Ok(Some(entry));
         }
-        if self.responses.get(domain).is_none() {
+        if !self.responses.contains_key(domain) {
             let qn = self.qnum;
             self.qnum = self.qnum.wrapping_add(1);
             let mut query = dns_parser::Builder::new_query(qn, true);
