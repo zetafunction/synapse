@@ -67,9 +67,9 @@ lazy_static! {
         let prefix = b"-SY0010-";
         pid[..prefix.len()].clone_from_slice(&prefix[..]);
 
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         for p in pid.iter_mut().skip(prefix.len()) {
-            *p = rng.gen();
+            *p = rng.random();
         }
         pid
     };

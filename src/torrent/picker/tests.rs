@@ -1,7 +1,8 @@
 use super::{Block, Picker};
 use crate::control;
 use crate::torrent::{Bitfield, Info, Peer as TGPeer};
-use rand::distributions::{Distribution, Range};
+use rand::seq::IteratorRandom;
+use rand::Rng;
 use std::cell::RefCell;
 use std::collections::HashMap;
 
@@ -15,18 +16,15 @@ struct Simulation {
 
 impl Simulation {
     fn new(cfg: TestCfg, picker: Picker) -> Simulation {
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let mut peers = Vec::new();
         for i in 0..cfg.peers {
-            let connected =
-                rand::seq::sample_iter(&mut rng, 0..cfg.peers as usize, cfg.connect_limit as usize)
-                    .unwrap();
-            let unchoked = rand::seq::sample_iter(
-                &mut rng,
-                connected.iter().map(|v| *v),
-                cfg.unchoke_limit as usize,
-            )
-            .unwrap();
+            let connected = (0..cfg.peers as usize)
+                .choose_multiple(&mut rng, cfg.connect_limit as usize);
+            let unchoked = connected
+                .iter()
+                .map(|v| *v)
+                .choose_multiple(&mut rng, cfg.unchoke_limit as usize);
             let peer = Peer {
                 picker: picker.clone(),
                 connected,
@@ -83,15 +81,15 @@ impl Simulation {
     }
 
     fn tick(&mut self) -> Result<(), ()> {
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         for peer in self.peers.borrow_mut().iter_mut() {
             for _ in 0..self.cfg.req_per_tick {
                 if !peer.requests.is_empty() {
                     let req = if true {
                         peer.requests.pop().unwrap()
                     } else {
-                        let b = Range::new(0, peer.requests.len());
-                        peer.requests.remove(b.sample(&mut rng))
+                        peer.requests
+                            .remove((&mut rng).random_range(0..peer.requests.len()))
                     };
                     let ref mut received = self.peers.borrow_mut()[req.peer];
                     received
