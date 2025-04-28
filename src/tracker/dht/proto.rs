@@ -1,3 +1,5 @@
+#![allow(unexpected_cfgs)] // error_chain is unmaintained :(
+
 use super::{ID, VERSION};
 use crate::bencode::{self, BEncode};
 use crate::util::{addr_to_bytes, bytes_to_addr};

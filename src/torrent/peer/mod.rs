@@ -1,3 +1,5 @@
+#![allow(unexpected_cfgs)] // error_chain is unmaintained :(
+
 pub mod reader;
 pub mod writer;
 

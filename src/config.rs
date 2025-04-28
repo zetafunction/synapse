@@ -1,3 +1,5 @@
+#![allow(unexpected_cfgs)] // error_chain is unmaintained :(
+
 use ip_network::IpNetwork;
 use std::collections::HashMap;
 use std::io::Read;
