@@ -304,10 +304,10 @@ impl Request {
                     .remove(b"port".as_ref())
                     .and_then(|b| b.into_int())
                     .and_then(|b| {
-                        if b > 65_535 || b < 0 {
-                            None
-                        } else {
+                        if (0..=65_535).contains(&b) {
                             Some(b as u16)
+                        } else {
+                            None
                         }
                     })
                     .ok_or_else(|| {
@@ -596,10 +596,7 @@ impl Response {
     }
 
     fn is_err(&self) -> bool {
-        match self.kind {
-            ResponseKind::Error(_) => true,
-            _ => false,
-        }
+        matches!(self.kind, ResponseKind::Error(_))
     }
 }
 

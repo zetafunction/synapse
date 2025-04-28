@@ -116,10 +116,7 @@ impl Picker {
 
     /// Returns true if the current picker algorithm is sequential
     pub fn is_sequential(&self) -> bool {
-        match self.picker {
-            PickerKind::Sequential(_) => true,
-            _ => false,
-        }
+        matches!(self.picker, PickerKind::Sequential(_))
     }
 
     pub fn done(&mut self) {
@@ -206,7 +203,7 @@ impl Picker {
     fn pick_dl<T: cio::CIO>(&mut self, peer: &Peer<T>) -> Option<Block> {
         self.downloading
             .iter_mut()
-            .filter(|&(_, ref req)| req.num_reqd < MAX_DUP_REQS && !req.has_peer(peer.id()))
+            .filter(|(_, req)| req.num_reqd < MAX_DUP_REQS && !req.has_peer(peer.id()))
             .take(MAX_DL_REREQ)
             .fold(None, |c: Option<(&Block, &mut Request)>, this| match &c {
                 Some(min) => {
@@ -218,9 +215,9 @@ impl Picker {
                 }
                 None => Some(this),
             })
-            .and_then(|(block, req)| {
+            .map(|(block, req)| {
                 req.rereq(peer.id(), peer.rank);
-                Some(*block)
+                *block
             })
     }
 
@@ -368,7 +365,7 @@ fn generate_piece_pri(pri: &[u8], info: &Arc<Info>) -> Vec<u8> {
     // If a piece is completely in a file, just assign that pri.
     // Otherwise mark it as the higher pri piece
     for p in 0..info.pieces() {
-        let max = Info::piece_disk_locs(&info, p)
+        let max = Info::piece_disk_locs(info, p)
             .map(|loc| pri[loc.file])
             .max()
             .expect("Piece must have locations!");

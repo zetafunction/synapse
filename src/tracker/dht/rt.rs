@@ -98,14 +98,15 @@ impl RoutingTable {
     }
 
     pub fn deserialize(data: &[u8]) -> Option<RoutingTable> {
-        bincode::deserialize(data).ok().map(|rt: RoutingTable| {
-            info!(
-                "Loaded {} dht buckets, {} nodes",
-                rt.buckets.len(),
-                rt.buckets.iter().map(|buk| buk.nodes.len()).sum::<usize>()
-            );
-            rt
-        })
+        bincode::deserialize(data)
+            .ok()
+            .inspect(|rt: &RoutingTable| {
+                info!(
+                    "Loaded {} dht buckets, {} nodes",
+                    rt.buckets.len(),
+                    rt.buckets.iter().map(|buk| buk.nodes.len()).sum::<usize>()
+                );
+            })
     }
 
     pub fn add_addr(&mut self, addr: SocketAddr) -> (proto::Request, SocketAddr) {

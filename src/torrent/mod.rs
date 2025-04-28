@@ -112,17 +112,11 @@ struct Files {
 
 impl Status {
     pub fn magnet(&self) -> bool {
-        match self.state {
-            StatusState::Magnet => true,
-            _ => false,
-        }
+        matches!(self.state, StatusState::Magnet)
     }
 
     pub fn leeching(&self) -> bool {
-        match self.state {
-            StatusState::Incomplete => true,
-            _ => false,
-        }
+        matches!(self.state, StatusState::Incomplete)
     }
 
     pub fn stopped(&self) -> bool {
@@ -242,7 +236,7 @@ impl<T: cio::CIO> Torrent<T> {
             None
         } else {
             status.state = StatusState::Magnet;
-            Some(std::usize::MAX)
+            Some(usize::MAX)
         };
         let info_bytes = if info_idx.is_none() {
             info.to_bencode().encode_to_buf()
@@ -362,7 +356,7 @@ impl<T: cio::CIO> Torrent<T> {
         let info_idx = if info.complete() {
             None
         } else {
-            Some(std::usize::MAX)
+            Some(usize::MAX)
         };
         let info_bytes = if info_idx.is_none() {
             info.to_bencode().encode_to_buf()
@@ -854,7 +848,7 @@ impl<T: cio::CIO> Torrent<T> {
         for piece in 0..self.pieces.len() {
             let no_dl = Info::piece_disk_locs(&self.info, piece as u32)
                 .all(|loc| self.priorities[loc.file] == 0);
-            if self.pieces.has_bit(piece as u64) || no_dl {
+            if self.pieces.has_bit(piece) || no_dl {
                 continue;
             } else {
                 complete = false;
@@ -1264,7 +1258,7 @@ impl<T: cio::CIO> Torrent<T> {
                         } else {
                             16_384
                         };
-                        (&mut self.info_bytes[piece_len * 16_384..piece_len * 16_384 + size])
+                        (self.info_bytes[piece_len * 16_384..piece_len * 16_384 + size])
                             .copy_from_slice(&payload[data_idx..]);
                         if piece_len == last_idx {
                             let mut b = BTreeMap::new();
@@ -1501,7 +1495,7 @@ impl<T: cio::CIO> Torrent<T> {
     fn dump_torrent_file(&mut self) {
         let data = self.info.to_torrent_bencode().encode_to_buf();
         let mut path = PathBuf::from(&CONFIG.disk.session);
-        path.push(&util::hash_to_id(&self.info.hash));
+        path.push(util::hash_to_id(&self.info.hash));
         path.set_extension("torrent");
         self.cio.msg_disk(disk::Request::WriteFile { data, path });
     }
@@ -1582,7 +1576,7 @@ impl<T: cio::CIO> Torrent<T> {
                 Some(self.info.files.len() as u32),
             )
         } else {
-            let name = if self.info.name == "" {
+            let name = if self.info.name.is_empty() {
                 None
             } else {
                 Some(self.info.name.clone())
@@ -1694,7 +1688,7 @@ impl<T: cio::CIO> Torrent<T> {
             r.push(id)
         }
         let mut seen_urls = FHashSet::default();
-        for (_, tracker) in self.trackers.iter().enumerate() {
+        for tracker in self.trackers.iter() {
             if seen_urls.contains(tracker.url.as_str()) {
                 continue;
             }
