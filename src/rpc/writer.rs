@@ -89,9 +89,6 @@ impl Writer {
 
 impl State {
     fn idle(&self) -> bool {
-        match *self {
-            State::Idle => true,
-            _ => false,
-        }
+        matches!(*self, State::Idle)
     }
 }

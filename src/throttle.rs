@@ -238,7 +238,7 @@ impl ThrottleData {
     /// (self.last_used) * 1000/URATE - the bits/s, clearing self.last_used
     fn add_tokens(&mut self) -> u64 {
         self.epoch = self.epoch.wrapping_add(1);
-        let drained = self.last_used as u64;
+        let drained = self.last_used;
         self.last_used = 0;
         self.tokens += if let Some(r) = self.rate {
             if r > 0 {

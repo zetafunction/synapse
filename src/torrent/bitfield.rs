@@ -119,7 +119,7 @@ impl Bitfield {
         match self {
             Bitfield::I { len, data, set } => {
                 // Fail safe for magnets
-                if data.len() == 0 {
+                if data.is_empty() {
                     return false;
                 }
                 set == len
@@ -284,7 +284,7 @@ impl<'a> BitfieldIter<'a> {
     }
 }
 
-impl<'a> Iterator for BitfieldIter<'a> {
+impl Iterator for BitfieldIter<'_> {
     type Item = u64;
 
     fn next(&mut self) -> Option<u64> {
@@ -414,7 +414,14 @@ mod tests {
 
         bf.unset_bit(16);
 
-        assert_matches!(bf, Bitfield::I { len: 21, set: 20, .. });
+        assert_matches!(
+            bf,
+            Bitfield::I {
+                len: 21,
+                set: 20,
+                ..
+            }
+        );
     }
 
     #[test]

@@ -143,13 +143,13 @@ impl Writer {
                 ref data,
                 ref mut idx,
             } => {
-                if *idx < 13 as u16 {
+                if *idx < 13_u16 {
                     let amnt = conn.write(&prefix[(*idx as usize)..13])? as u16;
                     if amnt == 0 {
                         return io_err("EOF");
                     }
                     *idx += amnt;
-                    if *idx != 13 as u16 {
+                    if *idx != 13_u16 {
                         self.writable = false;
                         return Ok(false);
                     }

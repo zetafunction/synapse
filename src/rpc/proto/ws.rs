@@ -138,9 +138,9 @@ impl Message {
     }
 }
 
-impl Into<Message> for Frame {
-    fn into(self) -> Message {
-        match self {
+impl From<Frame> for Message {
+    fn from(frame: Frame) -> Message {
+        match frame {
             Frame::Text(t) => Message::text(t),
             Frame::Binary(b) => Message::binary(b),
         }
@@ -157,10 +157,7 @@ impl Opcode {
     }
 
     pub fn is_other(&self) -> bool {
-        match *self {
-            Opcode::OtherControl(_) | Opcode::Other(_) => true,
-            _ => false,
-        }
+        matches!(*self, Opcode::OtherControl(_) | Opcode::Other(_))
     }
 
     pub fn code(&self) -> u8 {

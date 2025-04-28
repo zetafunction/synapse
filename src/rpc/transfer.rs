@@ -126,7 +126,7 @@ impl Transfers {
         let ids: Vec<usize> = self
             .torrents
             .iter()
-            .filter(|&(_, ref t)| t.timed_out())
+            .filter(|(_, t)| t.timed_out())
             .map(|(id, _)| *id)
             .collect();
         for id in ids {
