@@ -218,7 +218,7 @@ impl Processor {
                             resources: vec![SResourceUpdate::UserData {
                                 id: resource.id.clone(),
                                 kind: res.kind(),
-                                user_data: user_data,
+                                user_data,
                             }],
                         });
                     }
