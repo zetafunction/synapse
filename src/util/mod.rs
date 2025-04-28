@@ -9,7 +9,7 @@ use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 
 use byteorder::{BigEndian, ByteOrder};
 use metrohash::MetroHash;
-use rand::distributions::Alphanumeric;
+use rand::distr::{Alphanumeric, SampleString};
 use rand::{self, Rng};
 use sha1::{Digest, Sha1};
 
@@ -86,9 +86,9 @@ where
 {
     let mut elem = None;
     let mut i = 1f64;
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     for new_item in iter {
-        if rng.gen::<f64>() < (1f64 / i) {
+        if rng.random::<f64>() < (1f64 / i) {
             elem = Some(new_item);
         }
         i += 1.0;
@@ -97,10 +97,7 @@ where
 }
 
 pub fn random_string(len: usize) -> String {
-    rand::thread_rng()
-        .sample_iter(&Alphanumeric)
-        .take(len)
-        .collect::<String>()
+    Alphanumeric.sample_string(&mut rand::rng(), len)
 }
 
 pub fn sha1_hash(data: &[u8]) -> [u8; 20] {

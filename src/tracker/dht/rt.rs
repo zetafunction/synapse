@@ -75,9 +75,9 @@ pub enum NodeState {
 impl RoutingTable {
     pub fn new() -> RoutingTable {
         let mut id = [0u8; 20];
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         for i in &mut id {
-            *i = rng.gen::<u8>();
+            *i = rng.random::<u8>();
         }
 
         RoutingTable {
@@ -683,9 +683,9 @@ impl Node {
 
     fn create_token() -> Vec<u8> {
         let mut tok = Vec::new();
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         for _ in 0..20 {
-            tok.push(rng.gen::<u8>());
+            tok.push(rng.random::<u8>());
         }
         tok
     }

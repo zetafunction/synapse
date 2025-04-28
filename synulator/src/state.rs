@@ -49,11 +49,11 @@ impl State {
             id: "synulator".to_owned(),
             ..Default::default()
         }));
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         for i in 0..TORRENTS {
-            let peers = rng.gen_range(0, PEERS);
-            let trackers = rng.gen_range(0, TRACKERS);
-            let files = rng.gen_range(0, FILES);
+            let peers = rng.random_range(0..PEERS);
+            let trackers = rng.random_range(0..TRACKERS);
+            let files = rng.random_range(0..FILES);
             let tid = format!("torrent-{}", i);
             res.push(Resource::Torrent(resource::Torrent {
                 id: tid.clone(),

@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::{cmp, fmt, mem};
 
-use rand::{self, Rng};
+use rand::seq::SliceRandom;
 use url::Url;
 
 use crate::bencode::BEncode;
@@ -124,7 +124,7 @@ impl Info {
             .filter_map(|(_, ref v)| Url::parse(v).ok())
             .map(Arc::new)
             .collect();
-        rand::thread_rng().shuffle(&mut url_list[..]);
+        url_list.shuffle(&mut rand::rng());
 
         let name = url
             .query_pairs()
@@ -316,7 +316,7 @@ impl Info {
                             .filter_map(BEncode::into_string)
                             .filter_map(|s| Url::parse(&s).ok().map(Arc::new))
                             .collect();
-                        rand::thread_rng().shuffle(&mut l[..]);
+                        l.shuffle(&mut rand::rng());
                         l
                     })
                     .collect();
