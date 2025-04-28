@@ -19,6 +19,7 @@ pub fn init(args: args::Args) -> Result<(), ()> {
     info!("Initializing");
 
     // Since the config is lazy loaded, dereference now to check it.
+    #[allow(clippy::no_effect)]
     CONFIG.port;
 
     if let Err(e) = init_signals() {

@@ -361,7 +361,7 @@ impl RoutingTable {
                 if !values.is_empty() {
                     return Ok(tracker::Response::DHT {
                         tid: torrent,
-                        peers: mem::replace(values, vec![]),
+                        peers: mem::take(values),
                     });
                 }
 

@@ -120,32 +120,32 @@ impl Client {
     }
 }
 
-impl Into<SStream> for Client {
-    fn into(self) -> SStream {
-        self.conn
+impl From<Client> for SStream {
+    fn from(client: Client) -> Self {
+        client.conn
     }
 }
 
-impl Into<Client> for Incoming {
-    fn into(mut self) -> Client {
-        let magic = self.key.unwrap() + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
+impl From<Incoming> for Client {
+    fn from(mut incoming: Incoming) -> Self {
+        let magic = incoming.key.unwrap() + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
         let digest = sha1_hash(magic.as_bytes());
         let accept = base64::encode(digest.as_ref());
         let lines = [
-            format!("HTTP/1.1 101 Switching Protocols"),
-            format!("Connection: upgrade"),
-            format!("Upgrade: websocket"),
+            "HTTP/1.1 101 Switching Protocols".into(),
+            "Connection: upgrade".into(),
+            "Upgrade: websocket".into(),
             format!("Sec-WebSocket-Accept: {}", accept),
         ];
         let data = lines.join("\r\n") + "\r\n\r\n";
         // Ignore error, it'll pop up again anyways
-        self.conn.write(data.as_bytes()).ok();
+        incoming.conn.write(data.as_bytes()).ok();
 
         let mut c = Client {
             r: Reader::new(),
             w: Writer::new(),
             buf: FragBuf::None,
-            conn: self.conn,
+            conn: incoming.conn,
             last_action: time::Instant::now(),
         };
 
@@ -157,9 +157,9 @@ impl Into<Client> for Incoming {
     }
 }
 
-impl Into<SStream> for Incoming {
-    fn into(self) -> SStream {
-        self.conn
+impl From<Incoming> for SStream {
+    fn from(incoming: Incoming) -> Self {
+        incoming.conn
     }
 }
 
@@ -256,11 +256,11 @@ impl FragBuf {
                 return Err(ErrorKind::BadPayload("Invalid continuation frame").into());
             }
             (FragBuf::Text(mut b), Opcode::Continuation) => {
-                b.extend(msg.data.into_iter());
+                b.extend(msg.data);
                 FragBuf::Text(b)
             }
             (FragBuf::Binary(mut b), Opcode::Continuation) => {
-                b.extend(msg.data.into_iter());
+                b.extend(msg.data);
                 FragBuf::Binary(b)
             }
             (FragBuf::Text(_), Opcode::Text)
@@ -292,25 +292,23 @@ fn validate_dl(req: &httparse::Request<'_, '_>) -> Option<(String, Option<String
         .and_then(|path| Url::parse(&format!("http://localhost{}", path)).ok())
         .and_then(|url| {
             let id = if url.path().contains("/dl/") {
-                url.path_segments().unwrap().last().map(|v| v.to_owned())
+                url.path_segments()
+                    .unwrap()
+                    .next_back()
+                    .map(|v| v.to_owned())
             } else {
                 return None;
             };
             if CONFIG.rpc.auth {
                 let pw = url
                     .query_pairs()
-                    .find(|&(ref k, _)| k == "token")
+                    .find(|(k, _)| k == "token")
                     .map(|(_, v)| format!("{}", v))
                     .and_then(|p| base64::decode(&p).ok())
                     .map(|p| {
                         p.as_ref()
                             == sha1_hash(
-                                format!(
-                                    "{}{}",
-                                    id.as_ref().map(|s| s.as_str()).unwrap_or(""),
-                                    *DL_TOKEN
-                                )
-                                .as_bytes(),
+                                format!("{}{}", id.as_deref().unwrap_or(""), *DL_TOKEN).as_bytes(),
                             )
                     })
                     .unwrap_or(false);
@@ -384,7 +382,7 @@ fn validate_upgrade(req: &httparse::Request<'_, '_>) -> result::Result<String, b
             .and_then(|path| Url::parse(&format!("http://localhost{}", path)).ok())
             .and_then(|url| {
                 url.query_pairs()
-                    .find(|&(ref k, _)| k == "password")
+                    .find(|(k, _)| k == "password")
                     .map(|(_, v)| format!("{}", v))
                     .map(|p| p == CONFIG.rpc.password)
             })
@@ -405,7 +403,7 @@ fn validate_upgrade(req: &httparse::Request<'_, '_>) -> result::Result<String, b
                     .and_then(|auth| String::from_utf8(auth).ok())
                     .and_then(|auth| {
                         auth.split_terminator(':')
-                            .last()
+                            .next_back()
                             .map(|password| password == CONFIG.rpc.password)
                     })
             })
