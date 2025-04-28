@@ -49,6 +49,8 @@ impl BEncode {
         BEncode::Int(i)
     }
 
+    // TODO: Consider renaming this, as FromStr is fallible.
+    #[allow(clippy::should_implement_trait)]
     pub fn from_str(s: &str) -> BEncode {
         BEncode::String(Vec::from(s))
     }
@@ -142,16 +144,16 @@ impl BEncode {
                 Token::B(&BEncode::Int(i)) => {
                     write!(w, "i{}e", i)?;
                 }
-                Token::B(&BEncode::String(ref s)) => {
+                Token::B(BEncode::String(s)) => {
                     write!(w, "{}:", s.len())?;
                     w.write_all(s)?;
                 }
-                Token::B(&BEncode::List(ref v)) => {
+                Token::B(BEncode::List(v)) => {
                     write!(w, "l")?;
                     toks.push(Token::E);
-                    toks.extend(v.iter().rev().map(|v| Token::B(v)));
+                    toks.extend(v.iter().rev().map(Token::B));
                 }
-                Token::B(&BEncode::Dict(ref d)) => {
+                Token::B(BEncode::Dict(d)) => {
                     write!(w, "d")?;
                     toks.push(Token::E);
                     for (k, v) in d.iter().rev() {

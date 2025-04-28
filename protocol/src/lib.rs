@@ -250,12 +250,13 @@ impl<BF: Bitfield, Buf: Buffer> Message<BF, Buf> {
     }
 
     pub fn is_special(&self) -> bool {
-        match *self {
-            Message::Handshake { .. } | Message::Bitfield(_) | Message::Extension { .. } => true,
-            _ => false,
-        }
+        matches!(
+            self,
+            Message::Handshake { .. } | Message::Bitfield(_) | Message::Extension { .. }
+        )
     }
 
+    #[allow(clippy::len_without_is_empty)]
     pub fn len(&self) -> usize {
         match *self {
             Message::Handshake { .. } => 68,

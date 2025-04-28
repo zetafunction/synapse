@@ -12,7 +12,6 @@ use std::sync::Arc;
 use std::{fs, io, result, str, thread};
 
 use http_range::HttpRange;
-use rustls;
 use sstream::SStream;
 use url::Url;
 

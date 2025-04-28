@@ -243,7 +243,7 @@ impl cio::CIO for ACIO {
         pid: cio::PID,
         f: F,
     ) -> Option<T> {
-        self.data.borrow_mut().peers.get_mut(&pid).map(|p| f(p))
+        self.data.borrow_mut().peers.get_mut(&pid).map(f)
     }
 
     fn remove_peer(&self, peer: cio::PID) {

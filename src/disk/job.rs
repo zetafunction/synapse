@@ -3,7 +3,6 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::{cmp, fmt, fs, path, time};
 
-use fs2;
 use http_range::HttpRange;
 use sha1::{Digest, Sha1};
 use sstream::SStream;

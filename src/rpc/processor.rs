@@ -2,7 +2,6 @@ use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
 use std::fs::OpenOptions;
 use std::io::Read;
-use std::mem;
 use std::path::Path;
 
 use crate::rpc_lib;
