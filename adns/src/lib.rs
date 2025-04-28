@@ -123,7 +123,7 @@ impl Resolver {
             let mut query = dns_parser::Builder::new_query(qn, true);
             query.add_question(
                 domain,
-                true,
+                false,
                 dns_parser::QueryType::A,
                 dns_parser::QueryClass::IN,
             );
@@ -273,7 +273,7 @@ impl Query {
             let mut query = dns_parser::Builder::new_query(qn, true);
             query.add_question(
                 &self.domain,
-                true,
+                false,
                 dns_parser::QueryType::AAAA,
                 dns_parser::QueryClass::IN,
             );
@@ -284,7 +284,7 @@ impl Query {
             let mut query = dns_parser::Builder::new_query(qn, true);
             query.add_question(
                 &self.domain,
-                true,
+                false,
                 dns_parser::QueryType::A,
                 dns_parser::QueryClass::IN,
             );
