@@ -4,7 +4,6 @@ use std::os::unix::io::{AsRawFd, RawFd};
 use std::sync::Arc;
 
 use net2::{TcpBuilder, TcpStreamExt};
-use rustls::{self, Session};
 
 const EINPROGRESS: i32 = 115;
 
@@ -17,67 +16,59 @@ pub struct SStream {
 enum SConn {
     Plain(TcpStream),
     #[allow(clippy::upper_case_acronyms)]
-    SSLC {
-        conn: TcpStream,
-        session: rustls::ClientSession,
-    },
+    SSLC(rustls::StreamOwned<rustls::ClientConnection, TcpStream>),
     #[allow(clippy::upper_case_acronyms)]
-    SSLS {
-        conn: TcpStream,
-        session: rustls::ServerSession,
-    },
+    SSLS(rustls::StreamOwned<rustls::ServerConnection, TcpStream>),
 }
 
 impl SStream {
     pub fn new_v6(host: Option<String>) -> io::Result<SStream> {
-        let conn = TcpBuilder::new_v6()?.to_tcp_stream()?;
-        SStream::new(conn, host)
+        let sock = TcpBuilder::new_v6()?.to_tcp_stream()?;
+        SStream::new(sock, host)
     }
 
     pub fn new_v4(host: Option<String>) -> io::Result<SStream> {
-        let conn = TcpBuilder::new_v4()?.to_tcp_stream()?;
-        SStream::new(conn, host)
+        let sock = TcpBuilder::new_v4()?.to_tcp_stream()?;
+        SStream::new(sock, host)
     }
 
-    fn new(conn: TcpStream, host: Option<String>) -> io::Result<SStream> {
-        conn.set_nonblocking(true)?;
-        let fd = conn.as_raw_fd();
-        let sock = match host {
+    fn new(sock: TcpStream, host: Option<String>) -> io::Result<SStream> {
+        sock.set_nonblocking(true)?;
+        let fd = sock.as_raw_fd();
+        Ok(match host {
             Some(h) => {
-                let mut config = rustls::ClientConfig::new();
-                config
-                    .root_store
-                    .add_server_trust_anchors(&webpki_roots::TLS_SERVER_ROOTS);
-                let dns_name = match webpki::DNSNameRef::try_from_ascii_str(&h) {
-                    Ok(name) => name,
-                    Err(_) => {
-                        return Err(io::Error::new(
-                            io::ErrorKind::InvalidData,
-                            "invalid host string used",
-                        ))
-                    }
+                let root_store = rustls::RootCertStore {
+                    roots: webpki_roots::TLS_SERVER_ROOTS.to_vec(),
                 };
-                let session = rustls::ClientSession::new(&Arc::new(config), dns_name);
+                let config = rustls::ClientConfig::builder()
+                    .with_root_certificates(root_store)
+                    .with_no_client_auth();
+                let dns_name = rustls::pki_types::DnsName::try_from_str(&h)
+                    .map_err(|_| {
+                        io::Error::new(io::ErrorKind::InvalidData, "invalid host string used")
+                    })?
+                    .to_owned();
+                let conn = rustls::ClientConnection::new(
+                    Arc::new(config),
+                    rustls::pki_types::ServerName::DnsName(dns_name),
+                )
+                .map_err(std::io::Error::other)?;
                 SStream {
-                    conn: SConn::SSLC { conn, session },
+                    conn: SConn::SSLC(rustls::StreamOwned::new(conn, sock)),
                     fd,
                 }
             }
             None => SStream {
-                conn: SConn::Plain(conn),
+                conn: SConn::Plain(sock),
                 fd,
             },
-        };
-        Ok(sock)
+        })
     }
 
     pub fn connect(&mut self, addr: SocketAddr) -> io::Result<()> {
-        match self.conn {
-            SConn::Plain(ref mut c)
-            | SConn::SSLC {
-                conn: ref mut c, ..
-            } => {
-                if let Err(e) = c.connect(addr) {
+        match &mut self.conn {
+            SConn::Plain(sock) | SConn::SSLC(rustls::StreamOwned { sock, .. }) => {
+                if let Err(e) = sock.connect(addr) {
                     if Some(EINPROGRESS) != e.raw_os_error() {
                         return Err(e);
                     }
@@ -88,40 +79,37 @@ impl SStream {
         }
     }
 
-    pub fn from_plain(stream: TcpStream) -> io::Result<SStream> {
-        stream.set_nonblocking(true)?;
-        let fd = stream.as_raw_fd();
+    pub fn from_plain(sock: TcpStream) -> io::Result<SStream> {
+        sock.set_nonblocking(true)?;
+        let fd = sock.as_raw_fd();
         Ok(SStream {
-            conn: SConn::Plain(stream),
+            conn: SConn::Plain(sock),
             fd,
         })
     }
 
-    pub fn from_ssl(conn: TcpStream, config: &Arc<rustls::ServerConfig>) -> io::Result<SStream> {
-        conn.set_nonblocking(true)?;
-        let fd = conn.as_raw_fd();
-        let session = rustls::ServerSession::new(config);
+    pub fn from_ssl(sock: TcpStream, config: &Arc<rustls::ServerConfig>) -> io::Result<SStream> {
+        sock.set_nonblocking(true)?;
+        let fd = sock.as_raw_fd();
+        let conn = rustls::ServerConnection::new(config.clone()).map_err(std::io::Error::other)?;
         Ok(SStream {
-            conn: SConn::SSLS { conn, session },
+            conn: SConn::SSLS(rustls::StreamOwned::new(conn, sock)),
             fd,
         })
     }
 
     pub fn get_stream(&self) -> &TcpStream {
-        match self.conn {
-            SConn::Plain(ref c) => c,
-            SConn::SSLC { ref conn, .. } => conn,
-            SConn::SSLS { ref conn, .. } => conn,
+        match &self.conn {
+            SConn::Plain(sock) => sock,
+            SConn::SSLC(rustls::StreamOwned { sock, .. }) => sock,
+            SConn::SSLS(rustls::StreamOwned { sock, .. }) => sock,
         }
     }
 
     fn read_(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        match self.conn {
-            SConn::Plain(ref mut c) => c.read(buf),
-            SConn::SSLC {
-                ref mut conn,
-                ref mut session,
-            } => {
+        match &mut self.conn {
+            SConn::Plain(sock) => sock.read(buf),
+            SConn::SSLC(stream) => {
                 // Attempt to call complete_io as many times as necessary
                 // to complete handshaking. Once handshaking is complete
                 // session.read should begin returning results which we
@@ -131,10 +119,12 @@ impl SStream {
                 // reading 0 bytes simply indicates the TLS session buffer
                 // has no data
                 loop {
-                    match session.complete_io(conn)? {
-                        (0, 0) => return session.read(buf),
+                    match stream.conn.complete_io(&mut stream.sock)? {
+                        (0, 0) => {
+                            return stream.read(buf);
+                        }
                         _ => {
-                            let res = session.read(buf)?;
+                            let res = stream.read(buf)?;
                             if res > 0 {
                                 return Ok(res);
                             }
@@ -142,14 +132,13 @@ impl SStream {
                     }
                 }
             }
-            SConn::SSLS {
-                ref mut conn,
-                ref mut session,
-            } => loop {
-                match session.complete_io(conn)? {
-                    (0, 0) => return session.read(buf),
+            SConn::SSLS(stream) => loop {
+                match stream.conn.complete_io(&mut stream.sock)? {
+                    (0, 0) => {
+                        return stream.read(buf);
+                    }
                     _ => {
-                        let res = session.read(buf)?;
+                        let res = stream.read(buf)?;
                         if res > 0 {
                             return Ok(res);
                         }
@@ -176,43 +165,31 @@ impl io::Read for SStream {
 
 impl io::Write for SStream {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        match self.conn {
-            SConn::Plain(ref mut c) => c.write(buf),
-            SConn::SSLC {
-                ref mut conn,
-                ref mut session,
-            } => {
-                let result = session.write(buf);
-                session.complete_io(conn)?;
+        match &mut self.conn {
+            SConn::Plain(stream) => stream.write(buf),
+            SConn::SSLC(stream) => {
+                let result = stream.write(buf);
+                stream.conn.complete_io(&mut stream.sock)?;
                 result
             }
-            SConn::SSLS {
-                ref mut conn,
-                ref mut session,
-            } => {
-                let result = session.write(buf);
-                session.complete_io(conn)?;
+            SConn::SSLS(stream) => {
+                let result = stream.write(buf);
+                stream.conn.complete_io(&mut stream.sock)?;
                 result
             }
         }
     }
 
     fn flush(&mut self) -> io::Result<()> {
-        match self.conn {
-            SConn::Plain(ref mut c) => c.flush(),
-            SConn::SSLC {
-                ref mut conn,
-                ref mut session,
-            } => {
-                session.flush()?;
-                conn.flush()
+        match &mut self.conn {
+            SConn::Plain(stream) => stream.flush(),
+            SConn::SSLC(stream) => {
+                stream.flush()?;
+                stream.sock.flush()
             }
-            SConn::SSLS {
-                ref mut conn,
-                ref mut session,
-            } => {
-                session.flush()?;
-                conn.flush()
+            SConn::SSLS(stream) => {
+                stream.flush()?;
+                stream.sock.flush()
             }
         }
     }
