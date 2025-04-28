@@ -4,6 +4,9 @@ use std::io::{self, Read};
 use std::net::{IpAddr, SocketAddr, UdpSocket};
 use std::time::{Duration, Instant};
 
+use dns_parser::rdata::a;
+use dns_parser::rdata::aaaa;
+
 const QUERY_TIMEOUT_MS: u64 = 1000;
 
 pub struct Resolver {
@@ -118,7 +121,12 @@ impl Resolver {
             let qn = self.qnum;
             self.qnum = self.qnum.wrapping_add(1);
             let mut query = dns_parser::Builder::new_query(qn, true);
-            query.add_question(domain, dns_parser::QueryType::A, dns_parser::QueryClass::IN);
+            query.add_question(
+                domain,
+                true,
+                dns_parser::QueryType::A,
+                dns_parser::QueryClass::IN,
+            );
             let packet = query.build().unwrap_or_else(|d| d);
             sock.send_to(&packet, self.servers[0])?;
 
@@ -155,7 +163,7 @@ impl Resolver {
                             let now = Instant::now();
                             for answer in packet.answers {
                                 match answer.data {
-                                    dns_parser::RRData::A(addr) => {
+                                    dns_parser::RData::A(a::Record(addr)) => {
                                         for id in self.responses.remove(&q.domain).unwrap() {
                                             f(Response {
                                                 id,
@@ -172,7 +180,7 @@ impl Resolver {
                                         );
                                         continue 'process;
                                     }
-                                    dns_parser::RRData::AAAA(addr) => {
+                                    dns_parser::RData::AAAA(aaaa::Record(addr)) => {
                                         for id in self.responses.remove(&q.domain).unwrap() {
                                             f(Response {
                                                 id,
@@ -265,6 +273,7 @@ impl Query {
             let mut query = dns_parser::Builder::new_query(qn, true);
             query.add_question(
                 &self.domain,
+                true,
                 dns_parser::QueryType::AAAA,
                 dns_parser::QueryClass::IN,
             );
@@ -275,6 +284,7 @@ impl Query {
             let mut query = dns_parser::Builder::new_query(qn, true);
             query.add_question(
                 &self.domain,
+                true,
                 dns_parser::QueryType::A,
                 dns_parser::QueryClass::IN,
             );
