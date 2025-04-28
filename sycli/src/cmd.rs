@@ -6,7 +6,6 @@ use std::{cmp, fs, mem};
 use prettytable::format::consts::FORMAT_NO_LINESEP_WITH_TITLE as TABLE_FORMAT;
 use prettytable::Table;
 use sha1::{Digest, Sha1};
-use ureq;
 use url::Url;
 
 use rpc::criterion::{Criterion, Operation, Value};
@@ -53,7 +52,7 @@ fn add_file(
     let msg = CMessage::UploadTorrent {
         serial: c.next_serial(),
         size: torrent.len() as u64,
-        path: dir.as_ref().map(|d| format!("{}", d)),
+        path: dir.as_ref().map(|d| d.to_string()),
         start,
         import,
     };
@@ -96,7 +95,7 @@ fn add_magnet(
     let msg = CMessage::UploadMagnet {
         serial: c.next_serial(),
         uri: magnet.as_str().to_owned(),
-        path: dir.as_ref().map(|d| format!("{}", d)),
+        path: dir.as_ref().map(|d| d.to_string()),
         start,
     };
     match c.rr(msg)? {
@@ -271,27 +270,26 @@ pub fn list(mut c: Client, kind: &str, crit: Vec<Criterion>, output: &str) -> Re
             }
         }
 
-        #[cfg_attr(rustfmt, rustfmt_skip)]
         for res in results {
             match k {
                 ResourceKind::Torrent => {
                     let t = res.as_torrent();
                     table.add_row(row![
-                                  t.name.as_ref().map(|s| s.as_str()).unwrap_or("[Unknown Magnet]"),
-                                  format!("{:.2}%", t.progress * 100.),
-                                  fmt_bytes(t.transferred_down as f64),
-                                  fmt_bytes(t.transferred_up as f64),
-                                  fmt_bytes(t.rate_down as f64) + "/s",
-                                  fmt_bytes(t.rate_up as f64) + "/s",
-                                  t.peers
+                        t.name.as_deref().unwrap_or("[Unknown Magnet]"),
+                        format!("{:.2}%", t.progress * 100.),
+                        fmt_bytes(t.transferred_down as f64),
+                        fmt_bytes(t.transferred_up as f64),
+                        fmt_bytes(t.rate_down as f64) + "/s",
+                        fmt_bytes(t.rate_up as f64) + "/s",
+                        t.peers
                     ]);
                 }
                 ResourceKind::Tracker => {
                     let t = res.as_tracker();
                     table.add_row(row![
-                                  t.url.as_str(),
-                                  t.torrent_id,
-                                  t.error.as_ref().map(|s| s.as_str()).unwrap_or("")
+                        t.url.as_str(),
+                        t.torrent_id,
+                        t.error.as_deref().unwrap_or("")
                     ]);
                 }
                 ResourceKind::Peer => {
@@ -307,11 +305,11 @@ pub fn list(mut c: Client, kind: &str, crit: Vec<Criterion>, output: &str) -> Re
                 ResourceKind::File => {
                     let f = res.as_file();
                     table.add_row(row![
-                                  f.path,
-                                  f.torrent_id,
-                                  format!("{:.2}%", f.progress as f64 * 100.),
-                                  f.priority,
-                                  format!("{:.2}%", f.availability as f64 * 100.)
+                        f.path,
+                        f.torrent_id,
+                        format!("{:.2}%", f.progress as f64 * 100.),
+                        f.priority,
+                        format!("{:.2}%", f.availability as f64 * 100.)
                     ]);
                 }
                 ResourceKind::Server => {
@@ -431,7 +429,7 @@ pub fn watch(mut c: Client, id: &str, output: &str, completion: bool) -> Result<
     }
     let mut res = results.remove(0).into_owned();
     if let Resource::Torrent(ref t) = res {
-        if t.progress - 1.0 <= std::f32::EPSILON && completion {
+        if t.progress - 1.0 <= f32::EPSILON && completion {
             return Ok(());
         }
     }
