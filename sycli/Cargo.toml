@@ -16,7 +16,7 @@ url = "2.1"
 prettytable-rs = "0.10"
 shellexpand = "1"
 toml = "0.5"
-sha-1 = "0.8"
+sha-1 = "0.10.1"
 base64 = "0.22.1"
 regex = "1"
 
