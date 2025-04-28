@@ -6,7 +6,6 @@ use chrono::prelude::{DateTime, Utc};
 use serde;
 use serde_json as json;
 use url::Url;
-use url_serde;
 
 use super::criterion::{Field, Queryable, FNULL};
 
@@ -481,7 +480,6 @@ impl Peer {
 pub struct Tracker {
     pub id: String,
     pub torrent_id: String,
-    #[serde(with = "url_serde")]
     pub url: Url,
     pub last_report: DateTime<Utc>,
     pub error: Option<String>,

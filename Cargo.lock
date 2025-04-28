@@ -1414,6 +1414,7 @@ dependencies = [
  "net2",
  "nix 0.29.0",
  "num-bigint",
+ "percent-encoding 2.3.1",
  "platina",
  "rand 0.9.1",
  "rustls 0.18.1",
@@ -1428,7 +1429,7 @@ dependencies = [
  "synapse-rpc",
  "synapse-session",
  "toml",
- "url 1.7.2",
+ "url 2.5.4",
 ]
 
 [[package]]
@@ -1447,7 +1448,7 @@ dependencies = [
  "serde",
  "serde_derive",
  "serde_json",
- "url 1.7.2",
+ "url 2.5.4",
  "url_serde",
 ]
 
@@ -1684,6 +1685,7 @@ dependencies = [
  "form_urlencoded",
  "idna 1.0.3",
  "percent-encoding 2.3.1",
+ "serde",
 ]
 
 [[package]]
