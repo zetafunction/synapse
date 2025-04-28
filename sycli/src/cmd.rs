@@ -62,12 +62,10 @@ fn add_file(
     } else {
         bail!("Failed to receieve transfer offer from synapse!");
     };
-    let resp = ureq::post(url)
-        .set("Authorization", &format!("Bearer {}", token))
-        .send_bytes(&torrent);
-    if resp.error() {
-        bail!("Could not POST to synapse: {:?}", resp);
-    }
+    let _resp = ureq::post(url)
+        .header("Authorization", &format!("Bearer {}", token))
+        .send(&torrent)
+        .chain_err(|| "Could not POST to synapse")?;
 
     match c.recv()? {
         SMessage::ResourcesExtant { ids, .. } => {
@@ -194,17 +192,17 @@ pub fn dl(mut c: Client, url: &str, name: &str) -> Result<()> {
             .push(file.id());
         let digest = Sha1::digest(format!("{}{}", file.id(), token).as_bytes());
         let dl_token = BASE64_STANDARD.encode(digest.as_slice());
-        let resp = ureq::get(dl_url.as_str()).query("token", &dl_token).call();
-        if resp.error() {
-            bail!("Failed to download from synapse: {:?}", resp);
-        }
+        let mut resp = ureq::get(dl_url.as_str())
+            .query("token", &dl_token)
+            .call()
+            .chain_err(|| "Failed to download from synapse")?;
         if let Resource::File(f) = file {
             let p = Path::new(&f.path);
             if let Some(par) = p.parent() {
                 fs::create_dir_all(par).chain_err(|| ErrorKind::FileIO)?;
             }
             let mut f = fs::File::create(p).chain_err(|| ErrorKind::FileIO)?;
-            io::copy(&mut resp.into_reader(), &mut f).chain_err(|| ErrorKind::FileIO)?;
+            io::copy(&mut resp.body_mut().as_reader(), &mut f).chain_err(|| ErrorKind::FileIO)?;
         } else {
             bail!("Expected a file resource");
         }
