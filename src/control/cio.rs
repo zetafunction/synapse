@@ -1,3 +1,5 @@
+#![allow(unexpected_cfgs)] // error_chain is unmaintained :(
+
 use crate::{disk, rpc, torrent, tracker};
 use std::net::TcpStream;
 
