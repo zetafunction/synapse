@@ -105,7 +105,7 @@ impl Info {
                 .find(|&(ref k, ref v)| k == "xt" && v.starts_with("urn:btih:"))
                 .and_then(|(_, ref v)| {
                     id_to_hash(&v[9..]).or_else(|| {
-                        base32::decode(base32::Alphabet::RFC4648 { padding: true }, &v[9..])
+                        base32::decode(base32::Alphabet::Rfc4648 { padding: true }, &v[9..])
                             .and_then(|b| {
                                 if b.len() != 20 {
                                     return None;
