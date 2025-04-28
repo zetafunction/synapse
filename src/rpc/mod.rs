@@ -164,6 +164,7 @@ pub enum Message {
     PurgeDNS,
 }
 
+#[allow(clippy::upper_case_acronyms)]
 pub struct RPC {
     poll: amy::Poller,
     reg: amy::Registrar,

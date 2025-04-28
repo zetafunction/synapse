@@ -76,14 +76,10 @@ pub enum Response {
         url: Arc<Url>,
         resp: Result<TrackerResponse>,
     },
-    DHT {
-        tid: usize,
-        peers: Vec<SocketAddr>,
-    },
-    PEX {
-        tid: usize,
-        peers: Vec<SocketAddr>,
-    },
+    #[allow(clippy::upper_case_acronyms)]
+    DHT { tid: usize, peers: Vec<SocketAddr> },
+    #[allow(clippy::upper_case_acronyms)]
+    PEX { tid: usize, peers: Vec<SocketAddr> },
 }
 
 #[derive(Debug)]

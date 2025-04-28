@@ -15,6 +15,7 @@ const POLL_INT_MS: usize = 1000;
 const PRUNE_GOAL: usize = 50;
 
 /// Amy based CIO implementation. Currently the default one used.
+#[allow(clippy::upper_case_acronyms)]
 pub struct ACIO {
     data: Rc<RefCell<ACIOData>>,
 }
