@@ -10,6 +10,7 @@ pub fn io_err_val(reason: &'static str) -> io::Error {
 
 /// IO Result type for working with
 /// async IO
+#[allow(clippy::upper_case_acronyms)]
 pub enum IOR {
     Complete,
     Incomplete(usize),

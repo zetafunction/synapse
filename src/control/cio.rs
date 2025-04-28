@@ -20,7 +20,9 @@ error_chain! {
     }
 }
 
+#[allow(clippy::upper_case_acronyms)]
 pub type PID = usize;
+#[allow(clippy::upper_case_acronyms)]
 pub type TID = usize;
 
 pub enum Event {
@@ -29,6 +31,7 @@ pub enum Event {
         peer: PID,
         event: Result<torrent::Message>,
     },
+    #[allow(clippy::upper_case_acronyms)]
     RPC(Result<rpc::Message>),
     Tracker(Result<tracker::Response>),
     Disk(Result<disk::Response>),
@@ -38,6 +41,7 @@ pub enum Event {
 /// Control IO trait used as an abstraction boundary between
 /// the actual logic of the torrent client and the IO that needs
 /// to be done.
+#[allow(clippy::upper_case_acronyms)]
 pub trait CIO {
     /// Returns events for peers, timers, channels, etc.
     fn poll(&mut self, events: &mut Vec<Event>) -> Result<()>;

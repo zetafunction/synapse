@@ -16,10 +16,12 @@ pub struct SStream {
 
 enum SConn {
     Plain(TcpStream),
+    #[allow(clippy::upper_case_acronyms)]
     SSLC {
         conn: TcpStream,
         session: rustls::ClientSession,
     },
+    #[allow(clippy::upper_case_acronyms)]
     SSLS {
         conn: TcpStream,
         session: rustls::ServerSession,

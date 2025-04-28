@@ -3,6 +3,7 @@ use std::time;
 const ALPHA: f64 = 0.8;
 
 #[derive(Debug)]
+#[allow(clippy::upper_case_acronyms)]
 pub struct EMA {
     ul: u64,
     dl: u64,
