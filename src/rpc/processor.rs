@@ -317,7 +317,7 @@ impl Processor {
                         .iter()
                         .find(|c| c.field == "torrent_id" && c.op == Operation::Eq)
                         .and_then(|c| match &c.value {
-                            criterion::Value::S(ref s) => Some(s),
+                            criterion::Value::S(s) => Some(s),
                             _ => None,
                         })
                         .and_then(|id| torrent_idx.get(id));
@@ -550,7 +550,7 @@ impl Processor {
                             self.torrent_idx.insert(tid.to_owned(), MHashSet::default());
                         }
                         self.torrent_idx.get_mut(tid).unwrap().insert(id.clone());
-                        if let Resource::Tracker(ref t) = &r {
+                        if let Resource::Tracker(t) = &r {
                             // Note we don't have to send a client update here because
                             // this is updated in sync with the trackers field which does
                             // this for us.
@@ -629,7 +629,7 @@ impl Processor {
                         self.torrent_idx.remove(&id);
                     }
 
-                    if let Resource::Tracker(ref t) = &r {
+                    if let Resource::Tracker(t) = &r {
                         // Note we don't have to send a client update here: see above
                         if let Some(host) = t.url.host_str() {
                             if let Some(r) = self.resources.get_mut(&t.torrent_id) {

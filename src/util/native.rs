@@ -11,7 +11,7 @@ mod sys {
     use nix::libc::c_int;
 
     #[link(name = "fallocate")]
-    extern "C" {
+    unsafe extern "C" {
         pub fn native_fallocate(fd: c_int, len: u64) -> c_int;
     }
 }
