@@ -1,20 +1,17 @@
-#![allow(unexpected_cfgs)] // error_chain is unmaintained :(
+use thiserror::Error;
 
-error_chain! {
-    errors {
-        IO {
-            description("Unexpected socket IO error")
-            display("Unexpected socket IO error")
-        }
-
-        Complete {
-            description("Client connection completed")
-            display("Client connection completed")
-        }
-
-        BadPayload(s: &'static str) {
-            description("Failed to decode payload")
-                display("Bad payload: {}", s)
-        }
-    }
+#[derive(Debug, Error)]
+pub enum Error {
+    #[error("read IO error: {0}")]
+    Read(#[source] std::io::Error),
+    #[error("write IO error: {0}")]
+    Write(#[source] std::io::Error),
+    #[error("client connection completed")]
+    Complete,
+    #[error("invalid utf-8: {0}")]
+    InvalidUtf8(#[source] std::string::FromUtf8Error),
+    #[error("failed to decode payload: {0}")]
+    BadPayload(&'static str),
 }
+
+pub type Result<T> = std::result::Result<T, Error>;

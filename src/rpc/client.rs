@@ -9,7 +9,7 @@ use super::proto::message::{SMessage, Version};
 use super::proto::ws::{Frame, Message, Opcode};
 use super::reader::Reader;
 use super::writer::Writer;
-use super::{ErrorKind, Result, ResultExt};
+use super::{Error, Result};
 use super::{EMPTY_HTTP_RESP, UNAUTH_HTTP_RESP};
 use crate::util::{aread, sha1_hash, IOR};
 use crate::{CONFIG, DL_TOKEN};
@@ -59,26 +59,26 @@ impl Client {
     }
 
     fn read_frame(&mut self) -> Result<result::Result<Frame, bool>> {
-        let m = match self.r.read(&mut self.conn).chain_err(|| ErrorKind::IO)? {
+        let m = match self.r.read(&mut self.conn).map_err(Error::Read)? {
             Some(m) => m,
             None => return Ok(Err(true)),
         };
         if m.opcode().is_control() && m.len > 125 {
-            return Err(ErrorKind::BadPayload("Control frame too long!").into());
+            return Err(Error::BadPayload("Control frame too long!"));
         }
         if m.opcode().is_control() && !m.fin() {
-            return Err(ErrorKind::BadPayload("Control frame must not be fragmented!").into());
+            return Err(Error::BadPayload("Control frame must not be fragmented!"));
         }
         if m.opcode().is_other() {
-            return Err(ErrorKind::BadPayload("Non standard opcodes unsupported!").into());
+            return Err(Error::BadPayload("Non standard opcodes unsupported!"));
         }
         if m.extensions() {
-            return Err(ErrorKind::BadPayload("Connection should not contain RSV bits!").into());
+            return Err(Error::BadPayload("Connection should not contain RSV bits!"));
         }
         match m.opcode() {
             Opcode::Close => {
                 self.send_msg(Message::close())?;
-                return Err(ErrorKind::Complete.into());
+                return Err(Error::Complete);
             }
             Opcode::Text | Opcode::Binary | Opcode::Continuation => {
                 if let Some(f) = self.buf.process(m)? {
@@ -100,7 +100,7 @@ impl Client {
     }
 
     pub fn write(&mut self) -> Result<()> {
-        self.w.write(&mut self.conn).chain_err(|| ErrorKind::IO)
+        self.w.write(&mut self.conn).map_err(Error::Write)
     }
 
     pub fn send(&mut self, f: Frame) -> Result<()> {
@@ -254,7 +254,7 @@ impl FragBuf {
             (FragBuf::None, Opcode::Text) => FragBuf::Text(msg.data),
             (FragBuf::None, Opcode::Binary) => FragBuf::Binary(msg.data),
             (FragBuf::None, Opcode::Continuation) => {
-                return Err(ErrorKind::BadPayload("Invalid continuation frame").into());
+                return Err(Error::BadPayload("Invalid continuation frame"));
             }
             (FragBuf::Text(mut b), Opcode::Continuation) => {
                 b.extend(msg.data);
@@ -268,17 +268,15 @@ impl FragBuf {
             | (FragBuf::Text(_), Opcode::Binary)
             | (FragBuf::Binary(_), Opcode::Text)
             | (FragBuf::Binary(_), Opcode::Binary) => {
-                return Err(ErrorKind::BadPayload("Expected continuation of data frame").into());
+                return Err(Error::BadPayload("Expected continuation of data frame"));
             }
             _ => return Ok(None),
         };
         if fin {
             match mem::replace(self, FragBuf::None) {
-                FragBuf::Text(b) => {
-                    let t = String::from_utf8(b)
-                        .chain_err(|| ErrorKind::BadPayload("Invalid Utf8 in text!"))?;
-                    Ok(Some(Frame::Text(t)))
-                }
+                FragBuf::Text(b) => Ok(Some(Frame::Text(
+                    String::from_utf8(b).map_err(Error::InvalidUtf8)?,
+                ))),
                 FragBuf::Binary(b) => Ok(Some(Frame::Binary(b))),
                 FragBuf::None => unreachable!(),
             }
