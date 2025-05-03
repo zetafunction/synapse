@@ -1,31 +1,22 @@
-#![allow(unexpected_cfgs)] // error_chain is unmaintained :(
-
 use ip_network::IpNetwork;
 use std::collections::HashMap;
-use std::io::Read;
 use std::net::{SocketAddr, ToSocketAddrs};
 use std::{fs, process};
+use thiserror::Error;
 
 use crate::args;
 use crate::util::UnlimitedOrU64;
 
-error_chain! {
-    errors {
-        Env {
-            description("bad env var")
-                display("bad env var")
-        }
-
-        IO {
-            description("IO failed")
-                display("IO failed")
-        }
-
-        Format {
-            description("invalid config format")
-                display("invalid config format")
-        }
-    }
+#[derive(Debug, Error)]
+pub enum Error {
+    #[error("bad env var: {0}")]
+    Env(#[source] shellexpand::LookupError<std::env::VarError>),
+    #[error("IO failed: {0}")]
+    Io(#[source] std::io::Error),
+    #[error("invalid config format: {0}")]
+    Format(#[source] toml::de::Error),
+    #[error("no config")]
+    NoConfig,
 }
 
 #[derive(Debug, Clone)]
@@ -130,7 +121,15 @@ pub struct PeerConfig {
 }
 
 impl ConfigFile {
-    pub fn try_load() -> Result<ConfigFile> {
+    fn load_config_file(file: &str) -> Result<ConfigFile, Error> {
+        toml::from_str(
+            &fs::read_to_string(shellexpand::full(file).map_err(Error::Env)?.as_ref())
+                .map_err(Error::Io)?,
+        )
+        .map_err(Error::Format)
+    }
+
+    pub fn try_load() -> Result<ConfigFile, Error> {
         let args = args::args();
         let files = [
             args.config.as_deref().unwrap_or("./config.toml"),
@@ -138,12 +137,7 @@ impl ConfigFile {
             "~/.config/synapse.toml",
         ];
         for file in &files {
-            let mut s = String::new();
-            let res: Result<ConfigFile> = shellexpand::full(&file)
-                .chain_err(|| ErrorKind::Env)
-                .and_then(|p| fs::File::open(&*p).chain_err(|| ErrorKind::IO))
-                .and_then(|mut f| f.read_to_string(&mut s).chain_err(|| ErrorKind::IO))
-                .and_then(|_| toml::from_str(&s).chain_err(|| ErrorKind::Format));
+            let res = Self::load_config_file(file);
             match res {
                 Ok(mut cfg) => {
                     if cfg.max_dl == 0 {
@@ -156,12 +150,8 @@ impl ConfigFile {
                     }
                     return Ok(cfg);
                 }
-                Err(e @ Error(ErrorKind::Format, _)) => {
-                    use std::error::Error;
-                    error!(
-                        "Failed to parse config, terminating: {}",
-                        e.source().unwrap()
-                    );
+                Err(Error::Format(e)) => {
+                    error!("Failed to parse config, terminating: {}", e);
                     process::exit(1);
                 }
                 Err(e) => {
@@ -169,7 +159,7 @@ impl ConfigFile {
                 }
             }
         }
-        bail!("Failed to find a suitable config!");
+        Err(Error::NoConfig)
     }
 }
 

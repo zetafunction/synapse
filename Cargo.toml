@@ -54,6 +54,7 @@ ctrlc = "3.1"
 fs2 = "0.4"
 ip_network_table = "0.2.0"
 percent-encoding = "2.3"
+thiserror = "2.0.12"
 
 [dependencies.ip_network]
 version = "0.4.1"
