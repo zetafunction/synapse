@@ -280,7 +280,7 @@ impl<T: cio::CIO> Peer<T> {
             Ok(addr)
         } else {
             debug!("pid {} not found", pid);
-            Err(cio::ErrorKind::IO.into())
+            Err(cio::Error::NoSuchPeer(pid))
         }
     }
 

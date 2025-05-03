@@ -5,7 +5,7 @@ use std::{io, time};
 
 use amy::{self, ChannelError};
 
-use crate::control::cio::{self, Error, ErrorKind, Result, ResultExt};
+use crate::control::cio::{self, Error, Result};
 use crate::torrent::peer::reader::RRes;
 use crate::util::UHashMap;
 use crate::CONFIG;
@@ -151,19 +151,20 @@ impl ACIO {
                         }
                         RRes::Blocked => break,
                         RRes::Stalled => {
-                            if let Some(ref mut throt) = peer.sock_mut().throttle {
+                            if let Some(throt) = &mut peer.sock_mut().throttle {
                                 throt.set_stalled_dl();
                             }
                             break;
                         }
                         RRes::Err(e) => {
-                            return Err(Error::with_chain(e, ErrorKind::IO));
+                            return Err(Error::ProcessReadable(not.id, e));
                         }
                     }
                 }
             }
             if ev.writable() {
-                peer.writable().chain_err(|| ErrorKind::IO)?;
+                peer.writable()
+                    .map_err(|e| Error::ProcessWritable(not.id, e))?;
             }
         }
         Ok(())
@@ -175,7 +176,7 @@ impl cio::CIO for ACIO {
         {
             let mut d = self.data.borrow_mut();
             if d.crashed {
-                bail!("crashed thread detected, terminating!");
+                return Err(Error::Crashed);
             }
 
             for event in d.events.drain(..) {
@@ -219,7 +220,7 @@ impl cio::CIO for ACIO {
             // We couldn't even prune anything, this client must be really busy...
             // Either way just return an error
             if pruned.is_empty() {
-                return Err(ErrorKind::Full.into());
+                return Err(Error::Full);
             }
 
             for id in pruned {
@@ -231,7 +232,7 @@ impl cio::CIO for ACIO {
             .borrow_mut()
             .reg
             .register(peer.sock(), amy::Event::Both)
-            .chain_err(|| ErrorKind::IO)?;
+            .map_err(Error::AddPeer)?;
         if let Some(t) = peer.sock_mut().throttle.as_mut() {
             t.id = id
         }
@@ -276,7 +277,9 @@ impl cio::CIO for ACIO {
     fn msg_peer(&mut self, pid: cio::PID, msg: torrent::Message) {
         let mut d = self.data.borrow_mut();
         let err = if let Some(peer) = d.peers.get_mut(&pid) {
-            peer.write_message(msg).chain_err(|| ErrorKind::IO).err()
+            peer.write_message(msg)
+                .map_err(|e| Error::WritePeer(pid, e))
+                .err()
         } else {
             // might happen if removed but still present in a torrent
             debug!("Tried to message peer which has been removed!");
@@ -323,7 +326,7 @@ impl cio::CIO for ACIO {
             .borrow_mut()
             .reg
             .set_interval(interval)
-            .chain_err(|| ErrorKind::IO)
+            .map_err(Error::Timer)
     }
 
     fn new_handle(&self) -> Self {
@@ -341,7 +344,7 @@ impl ACIOData {
             }
             self.events.push(cio::Event::Peer {
                 peer: pid,
-                event: Err(ErrorKind::Request.into()),
+                event: Err(Error::Request),
             });
         }
     }

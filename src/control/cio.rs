@@ -1,26 +1,30 @@
-#![allow(unexpected_cfgs)] // error_chain is unmaintained :(
-
 use crate::{disk, rpc, torrent, tracker};
 use std::net::TcpStream;
+use thiserror::Error;
 
-error_chain! {
-    errors {
-        IO {
-            description("IO error")
-                display("IO error")
-        }
-
-        Full {
-            description("FD limit reached")
-                display("Too many existing open fd's, socket rejected")
-        }
-
-        Request {
-            description("removal requested")
-                display("removal requested")
-        }
-    }
+#[derive(Debug, Error)]
+pub enum Error {
+    #[error("failed to add peer: {0}")]
+    AddPeer(#[source] std::io::Error),
+    #[error("failed to write to peer {0}: {1}")]
+    WritePeer(PID, #[source] std::io::Error),
+    #[error("failed to process readable peer {0}: {1}")]
+    ProcessReadable(PID, #[source] std::io::Error),
+    #[error("failed to process writable peer {0}: {1}")]
+    ProcessWritable(PID, #[source] std::io::Error),
+    #[error("failed to set timer: {0}")]
+    Timer(#[source] std::io::Error),
+    #[error("FD limit reached")]
+    Full,
+    #[error("removal requested")]
+    Request,
+    #[error("peer {0} not found")]
+    NoSuchPeer(PID),
+    #[error("crashed thread")]
+    Crashed,
 }
+
+pub type Result<T> = std::result::Result<T, Error>;
 
 #[allow(clippy::upper_case_acronyms)]
 pub type PID = usize;
