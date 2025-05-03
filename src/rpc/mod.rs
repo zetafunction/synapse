@@ -17,7 +17,7 @@ use sstream::SStream;
 use url::Url;
 
 use self::client::{Client, Incoming, IncomingStatus};
-pub use self::errors::{Error, ErrorKind, Result, ResultExt};
+pub use self::errors::{Error, Result};
 use self::processor::{Processor, TransferKind};
 use self::proto::message::{self, SMessage};
 pub use self::proto::resource;
@@ -537,7 +537,7 @@ impl RPC {
                                 return;
                             }
                         }
-                        Err(Error(ErrorKind::Complete, _)) => {
+                        Err(Error::Complete) => {
                             info!("Client disconnected");
                             self.remove_client(not.id, c);
                             return;
