@@ -1486,6 +1486,7 @@ dependencies = [
  "synapse-protocol",
  "synapse-rpc",
  "synapse-session",
+ "thiserror 2.0.12",
  "toml",
  "url",
 ]
