@@ -244,21 +244,18 @@ impl<T: cio::CIO> Control<T> {
             }
             cio::Event::Tracker(Err(e)) => {
                 error!("tracker error: {}", e);
-                trace!("tracker error bt: {:?}", e.backtrace());
             }
             cio::Event::Disk(Ok(e)) => {
                 self.handle_disk_ev(e);
             }
             cio::Event::Disk(Err(e)) => {
                 error!("disk error: {}", e);
-                trace!("disk error: {:?}", e.backtrace());
             }
             cio::Event::RPC(Ok(e)) => {
                 return self.handle_rpc_ev(e);
             }
             cio::Event::RPC(Err(e)) => {
                 error!("rpc error: {}", e);
-                trace!("rpc error: {:?}", e.backtrace());
             }
             cio::Event::Incoming(conn) => {
                 self.handle_incoming_conn(conn);
