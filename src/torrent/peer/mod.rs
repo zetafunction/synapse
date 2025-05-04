@@ -1,11 +1,10 @@
-#![allow(unexpected_cfgs)] // error_chain is unmaintained :(
-
 pub mod reader;
 pub mod writer;
 
 use std::net::SocketAddr;
 use std::net::TcpStream;
 use std::{cmp, fmt, io, mem, time};
+use thiserror::Error;
 
 pub use self::message::Message;
 use self::reader::{RRes, Reader};
@@ -21,14 +20,25 @@ use crate::tracker;
 use crate::util;
 use crate::{CONFIG, DHT_EXT, IP_FILTER, PEER_ID};
 
-error_chain! {
-    errors {
-        ProtocolError(r: &'static str) {
-            description("Peer did not conform to the bittorrent protocol")
-                display("Peer protocol error: {:?}", r)
-        }
-    }
+#[derive(Debug, Error)]
+pub enum Error {
+    #[error("invalid pieces size {0}")]
+    InvalidPiecesSize(u64),
+    #[error("request from choked peer")]
+    RequestFromChokedPeer,
+    #[error("invalid piece {0}")]
+    InvalidPiece(u32),
+    #[error("duplicate piece {0}")]
+    DuplicatePiece(u32),
+    #[error("{0:?} is invalid bencode: {1}")]
+    InvalidBencode(Vec<u8>, #[source] bencode::BError),
+    #[error("ext handshake must be bencode dict")]
+    ExtHandshakeNotBencodeDict,
+    #[error("ext handshake invalid metadata")]
+    ExtHandshakeInvalidMetadata,
 }
+
+type Result<T> = std::result::Result<T, Error>;
 
 const INIT_MAX_QUEUE: u16 = 5;
 const MAX_QUEUE_CAP: u16 = 600;
@@ -288,7 +298,7 @@ impl<T: cio::CIO> Peer<T> {
         if self.pieces.len() == 0 {
             self.pieces = Bitfield::new(u64::from(info.pieces()));
         } else if !self.pieces.cap(u64::from(info.pieces())) {
-            return Err(ErrorKind::ProtocolError("Invalid pieces size").into());
+            return Err(Error::InvalidPiecesSize(u64::from(info.pieces())));
         }
         Ok(())
     }
@@ -388,7 +398,7 @@ impl<T: cio::CIO> Peer<T> {
             Message::Request { .. } => {
                 if self.local_status.choked {
                     info!("Got request while choked!");
-                    return Err(ErrorKind::ProtocolError("Peer requested while choked!").into());
+                    return Err(Error::RequestFromChokedPeer);
                 }
             }
             Message::Choke => {
@@ -405,12 +415,10 @@ impl<T: cio::CIO> Peer<T> {
             }
             Message::Have(idx) => {
                 if idx >= self.pieces.len() as u32 {
-                    return Err(ErrorKind::ProtocolError("Invalid piece provided in HAVE!").into());
+                    return Err(Error::InvalidPiece(idx));
                 }
                 if self.pieces.has_bit(u64::from(idx)) {
-                    return Err(
-                        ErrorKind::ProtocolError("Duplicate piece provided in HAVE!").into(),
-                    );
+                    return Err(Error::DuplicatePiece(idx));
                 }
                 self.pieces.set_bit(u64::from(idx));
                 self.piece_count += 1;
@@ -420,7 +428,8 @@ impl<T: cio::CIO> Peer<T> {
                 // Set the correct length, then swap the pieces
                 // Don't do this with magnets though
                 if self.pieces.len() > 0 && !pieces.cap(self.pieces.len()) {
-                    return Err(ErrorKind::ProtocolError("Invalid pieces size").into());
+                    // TODO: Should this be a distinct error enum?
+                    return Err(Error::InvalidPiecesSize(self.pieces.len()));
                 }
                 mem::swap(pieces, &mut self.pieces);
                 self.piece_count = self.pieces.iter().count();
@@ -449,18 +458,13 @@ impl<T: cio::CIO> Peer<T> {
             }
             Message::Extension { id, ref payload } => {
                 if id == 0 {
-                    let b = bencode::decode_buf(payload).map_err(|_| {
-                        ErrorKind::ProtocolError("Invalid bencode in ext handshake")
-                    })?;
-                    let mut d = b.into_dict().ok_or_else(|| {
-                        ErrorKind::ProtocolError("Invalid bencode type in ext handshake")
-                    })?;
+                    let b = bencode::decode_buf(payload)
+                        .map_err(|e| Error::InvalidBencode(payload.clone(), e))?;
+                    let mut d = b.into_dict().ok_or(Error::ExtHandshakeNotBencodeDict)?;
                     let mut m = d
                         .remove(b"m".as_ref())
                         .and_then(|v| v.into_dict())
-                        .ok_or_else(|| {
-                            ErrorKind::ProtocolError("Invalid metadata in in ext handshake")
-                        })?;
+                        .ok_or(Error::ExtHandshakeInvalidMetadata)?;
                     self.ext_ids.ut_meta = m
                         .remove(b"ut_metadata".as_ref())
                         .and_then(|v| v.into_int())
