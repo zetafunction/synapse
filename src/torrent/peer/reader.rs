@@ -328,7 +328,7 @@ mod tests {
     }
 
     impl<'a> Cursor<'a> {
-        fn new(data: &'a [u8]) -> Cursor<'_> {
+        fn new(data: &'a [u8]) -> Cursor<'a> {
             Cursor { data, idx: 0 }
         }
     }
