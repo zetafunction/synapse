@@ -11,9 +11,7 @@ use url::Url;
 
 use self::reader::{ReadRes, Reader};
 use self::writer::Writer;
-use crate::tracker::{
-    self, dns, Announce, Error, ErrorKind, Response, Result, ResultExt, TrackerResponse,
-};
+use crate::tracker::{self, dns, Announce, Error, Response, Result, TrackerResponse};
 use crate::util::{http, UHashMap};
 use crate::{bencode, PEER_ID};
 
@@ -91,7 +89,7 @@ impl TrackerState {
                 Event::DNSResolved(r),
             ) => {
                 let addr = SocketAddr::new(r.res?, port);
-                sock.connect(addr).chain_err(|| ErrorKind::IO)?;
+                sock.connect(addr).map_err(Error::Connect)?;
                 Ok(TrackerState::Writing {
                     sock,
                     writer: Writer::new(req),
@@ -122,13 +120,10 @@ impl TrackerState {
             ) => match reader.readable(&mut sock)? {
                 ReadRes::Done(data) => {
                     // Some trackers incorrectly include trailing characters in the response.
-                    let content = bencode::decode_buf_first(&data).chain_err(|| {
-                        let diagnostic = if let Ok(s) = String::from_utf8(data.to_vec()) {
-                            format!("invalid bencoded data: {s:?}")
-                        } else {
-                            format!("invalid bencoded data: {data:?}")
-                        };
-                        ErrorKind::InvalidResponse(diagnostic.into())
+                    let content = bencode::decode_buf_first(&data).map_err(|e| {
+                        let data = std::str::from_utf8(&data)
+                            .map_or_else(|_| format!("{:?}", data), str::to_string);
+                        Error::ResponseInvalidBencode(data, e)
                     })?;
                     let resp = TrackerResponse::from_bencode(content)?;
                     Ok(TrackerState::Complete(resp))
@@ -137,7 +132,7 @@ impl TrackerState {
                 ReadRes::None => Ok(TrackerState::Reading { sock, reader }),
             },
             (s @ TrackerState::ResolvingDNS { .. }, _) => Ok(s),
-            _ => bail!("Unknown state transition encountered!"),
+            _ => Err(Error::BadStateTransition),
         }
     }
 }
@@ -243,7 +238,7 @@ impl Handler {
                 resp = Some(Response::Tracker {
                     tid: trk.torrent,
                     url: trk.url.clone(),
-                    resp: Err(ErrorKind::InvalidResponse("Too many redirects".into()).into()),
+                    resp: Err(Error::TooManyRedirects),
                 });
             }
             if let Err(e) = self.try_redirect(&l, old, trk.torrent, dns) {
@@ -270,19 +265,13 @@ impl Handler {
     ) -> Result<()> {
         let url = match Url::parse(url) {
             Ok(url) => Ok(url),
-            Err(url::ParseError::RelativeUrlWithoutBase) => Ok(original_url
-                .join(url)
-                .map_err(|_| ErrorKind::InvalidResponse("Invalid relative redirect URL".into()))?),
+            Err(url::ParseError::RelativeUrlWithoutBase) => original_url.join(url),
             Err(e) => Err(e),
         }
-        .chain_err(|| {
-            error!("{} {}", original_url, url);
-            ErrorKind::InvalidResponse("Malformed redirect!".into())
-        })?;
-        let host = url.host_str().ok_or_else(|| {
-            error!("{}", url);
-            Error::from(ErrorKind::InvalidResponse("Malformed redirect!".into()))
-        })?;
+        .map_err(|e| Error::UrlParse("malformed redirect", url.to_string(), e))?;
+        let Some(host) = url.host_str() else {
+            return Err(Error::UrlNoHost(url.into()));
+        };
         let mut http_req = Vec::with_capacity(512);
         http::RequestBuilder::new("GET", url.path(), url.query())
             .header("User-agent", concat!("synapse/", env!("CARGO_PKG_VERSION")))
@@ -297,11 +286,11 @@ impl Handler {
         };
 
         // Setup actual connection and start DNS query
-        let sock = SStream::new_v4(ohost).chain_err(|| ErrorKind::IO)?;
+        let sock = SStream::new_v4(ohost).map_err(Error::CreateSocket)?;
         let id = self
             .reg
             .register(&sock, amy::Event::Both)
-            .chain_err(|| ErrorKind::IO)?;
+            .map_err(Error::Registrar)?;
         let port = url.port().unwrap_or(80);
         self.connections.insert(
             id,
@@ -315,13 +304,14 @@ impl Handler {
         );
 
         debug!("Dispatching redirect DNS req, id {:?}", id);
-        if let Some(ip) = dns.new_query(id, host).chain_err(|| ErrorKind::IO)? {
+        if let Some(ip) = dns.new_query(id, host).map_err(Error::DnsIo)? {
             debug!("Using cached DNS response");
             let res = self.dns_resolved(dns::QueryResponse { id, res: Ok(ip) });
             if res.is_some() {
-                bail!("Failed to establish connection to tracker!");
+                return Err(Error::Connection);
             }
         }
+        // TODO: Should the None branch be an error?
         Ok(())
     }
 
@@ -333,7 +323,7 @@ impl Handler {
                 resps.push(Response::Tracker {
                     tid: trk.torrent,
                     url: trk.url.clone(),
-                    resp: Err(ErrorKind::Timeout.into()),
+                    resp: Err(Error::Timeout),
                 });
                 false
             } else {
@@ -345,11 +335,10 @@ impl Handler {
 
     pub fn new_announce(&mut self, req: Announce, dns: &mut dns::Resolver) -> Result<()> {
         debug!("Received a new announce req for {:?}", req.url);
-        let host = req.url.host_str().ok_or_else(|| {
-            Error::from(ErrorKind::InvalidRequest(
-                "Tracker announce url has no host!".to_owned(),
-            ))
-        })?;
+        let host = req
+            .url
+            .host_str()
+            .ok_or_else(|| Error::UrlNoHost(req.url.as_ref().clone().into()))?;
 
         let mut http_req = Vec::with_capacity(512);
         let num_want = req.num_want.map(|nw| nw.to_string());
@@ -386,11 +375,11 @@ impl Handler {
         };
 
         // Setup actual connection and start DNS query
-        let sock = SStream::new_v4(ohost).chain_err(|| ErrorKind::IO)?;
+        let sock = SStream::new_v4(ohost).map_err(Error::CreateSocket)?;
         let id = self
             .reg
             .register(&sock, amy::Event::Both)
-            .chain_err(|| ErrorKind::IO)?;
+            .map_err(Error::Registrar)?;
         self.connections.insert(
             id,
             Tracker {
@@ -403,11 +392,11 @@ impl Handler {
         );
 
         debug!("Dispatching DNS req, id {:?}", id);
-        if let Some(ip) = dns.new_query(id, host).chain_err(|| ErrorKind::IO)? {
+        if let Some(ip) = dns.new_query(id, host).map_err(Error::DnsIo)? {
             debug!("Using cached DNS response");
             let res = self.dns_resolved(dns::QueryResponse { id, res: Ok(ip) });
             if res.is_some() {
-                bail!("Failed to establish connection to tracker!");
+                return Err(Error::Connection);
             }
         }
 

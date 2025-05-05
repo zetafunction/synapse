@@ -1,4 +1,4 @@
-use crate::tracker::errors::{ErrorKind, Result};
+use crate::tracker::errors::{Error, Result};
 use std::io;
 
 pub struct Writer {
@@ -13,7 +13,7 @@ impl Writer {
 
     pub fn writable<W: io::Write>(&mut self, conn: &mut W) -> Result<Option<()>> {
         match conn.write(&self.data[self.idx..]) {
-            Ok(0) => Err(ErrorKind::EOF.into()),
+            Ok(0) => Err(Error::Eof),
             Ok(v) if self.idx + v == self.data.len() => Ok(Some(())),
             Ok(v) => {
                 self.idx += v;
@@ -26,7 +26,7 @@ impl Writer {
                 {
                     Ok(None)
                 } else {
-                    Err(ErrorKind::IO.into())
+                    Err(Error::Write(e))
                 }
             }
         }
