@@ -12,7 +12,7 @@ use std::{io, result, thread};
 use byteorder::{BigEndian, ByteOrder};
 use url::Url;
 
-pub use self::errors::{Error, ErrorKind, Result, ResultExt};
+pub use self::errors::{Error, Result};
 use crate::bencode::BEncode;
 use crate::control::cio;
 use crate::disk;
@@ -206,9 +206,7 @@ impl Tracker {
             let response = match url.scheme() {
                 "http" | "https" => self.http.new_announce(req, &mut self.dns),
                 "udp" => self.udp.new_announce(req, &mut self.dns),
-                s => Err(
-                    ErrorKind::InvalidRequest(format!("Unknown tracker url scheme: {}", s)).into(),
-                ),
+                s => Err(Error::UrlUnsupportedScheme(s.to_string())),
             };
             if let Err(e) = response {
                 self.send_response(Response::Tracker {
@@ -379,13 +377,11 @@ impl TrackerResponse {
     }
 
     pub fn from_bencode(data: BEncode) -> Result<TrackerResponse> {
-        let mut d = data.into_dict().ok_or(ErrorKind::InvalidResponse(
-            "Tracker response must be a dictionary type!".into(),
-        ))?;
+        let mut d = data.into_dict().ok_or(Error::ResponseNotDictionary)?;
         if let Some(BEncode::String(data)) = d.remove(b"failure reason".as_ref()) {
-            let reason = String::from_utf8(data)
-                .chain_err(|| ErrorKind::InvalidResponse("Failure reason must be UTF8!".into()))?;
-            return Err(ErrorKind::TrackerError(reason).into());
+            return Err(Error::TrackerError(
+                String::from_utf8(data).map_err(Error::ResponseNonUtf8FailureReason)?,
+            ));
         }
         let mut resp = TrackerResponse::empty();
         if let Some(BEncode::String(ref data)) = d.remove(b"peers".as_ref()) {
@@ -402,13 +398,9 @@ impl TrackerResponse {
         match d.remove(b"interval".as_ref()) {
             Some(BEncode::Int(ref i)) => {
                 resp.interval = *i as u32;
+                Ok(resp)
             }
-            _ => {
-                return Err(
-                    ErrorKind::InvalidResponse("Response must have interval!".into()).into(),
-                );
-            }
-        };
-        Ok(resp)
+            _ => Err(Error::ResponseNoInterval),
+        }
     }
 }

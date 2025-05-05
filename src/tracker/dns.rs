@@ -1,7 +1,7 @@
 use std::io;
 use std::net::{IpAddr, UdpSocket};
 
-use crate::tracker::{ErrorKind, Result};
+use crate::tracker::{Error, Result};
 
 #[derive(Debug)]
 pub struct QueryResponse {
@@ -39,8 +39,8 @@ impl From<adns::Response> for QueryResponse {
             id: resp.id,
             res: match resp.result {
                 Ok(ip) => Ok(ip),
-                Err(adns::Error::NotFound) => Err(ErrorKind::DNSInvalid.into()),
-                Err(adns::Error::Timeout) => Err(ErrorKind::DNSTimeout.into()),
+                Err(adns::Error::NotFound) => Err(Error::DnsNotFound),
+                Err(adns::Error::Timeout) => Err(Error::DnsTimeout),
             },
         }
     }

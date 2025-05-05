@@ -1,7 +1,7 @@
 use std::io;
 use std::mem;
 
-use crate::tracker::errors::{ErrorKind, Result};
+use crate::tracker::errors::{Error, Result};
 use crate::util::{aread, IOR};
 
 pub struct Reader {
@@ -54,9 +54,9 @@ impl Reader {
                         data.truncate(self.idx);
                         return Ok(ReadRes::Done(data));
                     }
-                    _ => return Err(ErrorKind::EOF.into()),
+                    _ => return Err(Error::Eof),
                 },
-                IOR::Err(_) => return Err(ErrorKind::IO.into()),
+                IOR::Err(e) => return Err(Error::Read(e)),
             }
         }
     }
@@ -77,23 +77,19 @@ impl Reader {
                             .map(|c| redirect_codes.contains(c))
                             .unwrap_or(false)
                         {
-                            let loc = resp
+                            return resp
                                 .headers
                                 .iter()
                                 .find(|h| h.name == "Location")
-                                .and_then(|h| String::from_utf8(h.value.to_vec()).ok());
-                            if loc.is_none() {
-                                return Err(
-                                    ErrorKind::InvalidResponse("malformed HTTP".into()).into()
-                                );
-                            }
-                            return Ok(Some(ReadRes::Redirect(loc.unwrap())));
+                                .and_then(|h| String::from_utf8(h.value.to_vec()).ok())
+                                .ok_or(Error::RedirectNoLocation)
+                                .map(|loc| Some(ReadRes::Redirect(loc)));
                         }
                         header_done = Some(i);
                     }
                     Ok(httparse::Status::Partial) => {}
-                    Err(_) => {
-                        return Err(ErrorKind::InvalidResponse("malformed HTTP".into()).into());
+                    Err(e) => {
+                        return Err(Error::MalformedHttp(e));
                     }
                 }
             }

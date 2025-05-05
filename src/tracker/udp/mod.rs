@@ -5,9 +5,7 @@ use std::time;
 use byteorder::{BigEndian, ByteOrder, ReadBytesExt, WriteBytesExt};
 use rand::random;
 
-use crate::tracker::{
-    dns, Announce, Error, ErrorKind, Event, Response, Result, ResultExt, TrackerResponse,
-};
+use crate::tracker::{dns, Announce, Error, Event, Response, Result, TrackerResponse};
 use crate::util::{bytes_to_addr, FHashMap, UHashMap};
 use crate::{CONFIG, PEER_ID};
 
@@ -75,16 +73,12 @@ impl Handler {
     pub fn new_announce(&mut self, req: Announce, dns: &mut dns::Resolver) -> Result<()> {
         let url = req.url.clone();
         debug!("Received a new announce req for {:?}", url);
-        let host = url.host_str().ok_or_else(|| {
-            Error::from(ErrorKind::InvalidRequest(
-                "Tracker announce url has no host!".to_owned(),
-            ))
-        })?;
-        let port = url.port().ok_or_else(|| {
-            Error::from(ErrorKind::InvalidRequest(
-                "Tracker announce url has no port!".to_owned(),
-            ))
-        })?;
+        let host = url
+            .host_str()
+            .ok_or_else(|| Error::UrlNoHost(url.as_ref().clone().into()))?;
+        let port = url
+            .port()
+            .ok_or_else(|| Error::UrlNoPort(url.as_ref().clone().into()))?;
 
         let id = self.new_conn();
         self.connections.insert(
@@ -98,11 +92,11 @@ impl Handler {
             },
         );
         debug!("Dispatching DNS req for {:?}, url: {:?}", id, host);
-        if let Some(ip) = dns.new_query(id, host).chain_err(|| ErrorKind::IO)? {
+        if let Some(ip) = dns.new_query(id, host).map_err(Error::DnsIo)? {
             debug!("Using cached DNS response");
             let res = self.dns_resolved(dns::QueryResponse { id, res: Ok(ip) });
             if res.is_some() {
-                bail!("Failed to establish connection to tracker!");
+                return Err(Error::Connection);
             }
         }
         Ok(())
@@ -177,6 +171,7 @@ impl Handler {
                     }
                 }
                 _ => {
+                    // TODO: Is this worth logging/reporting?
                     debug!("Received invalid response from tracker!");
                 }
             }
@@ -193,7 +188,7 @@ impl Handler {
                     resps.push(Response::Tracker {
                         tid: conn.torrent,
                         url: conn.announce.url.clone(),
-                        resp: Err(ErrorKind::Timeout.into()),
+                        resp: Err(Error::Timeout),
                     });
                     debug!("Announce {:?} timed out", id);
                     false
@@ -324,22 +319,17 @@ impl Handler {
 
         let conn = self.connections.remove(&id)?;
 
-        if connect_resp.read_to_string(&mut s).is_err() {
-            let resp = Err(ErrorKind::InvalidResponse(
-                "Tracker error response was invalid UTF8".into(),
-            )
-            .into());
-            Some(Response::Tracker {
+        match connect_resp.read_to_string(&mut s) {
+            Ok(_) => Some(Response::Tracker {
                 tid: conn.torrent,
                 url: conn.announce.url,
-                resp,
-            })
-        } else {
-            Some(Response::Tracker {
+                resp: Err(Error::TrackerError(s)),
+            }),
+            Err(e) => Some(Response::Tracker {
                 tid: conn.torrent,
                 url: conn.announce.url,
-                resp: Err(ErrorKind::TrackerError(s).into()),
-            })
+                resp: Err(Error::UdpResponseInvalid(e)),
+            }),
         }
     }
 
@@ -359,11 +349,11 @@ impl Handler {
             match conn.state {
                 State::Connecting { ref addr, ref data } => {
                     conn.last_retrans = time::Instant::now();
-                    self.sock.send_to(data, addr).chain_err(|| ErrorKind::IO)
+                    self.sock.send_to(data, addr).map_err(Error::SendTo)
                 }
                 State::Announcing { ref addr, ref data } => {
                     conn.last_retrans = time::Instant::now();
-                    self.sock.send_to(data, addr).chain_err(|| ErrorKind::IO)
+                    self.sock.send_to(data, addr).map_err(Error::SendTo)
                 }
                 _ => Ok(0),
             }
