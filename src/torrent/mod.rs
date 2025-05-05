@@ -556,7 +556,7 @@ impl<T: cio::CIO> Torrent<T> {
                     }
                 }
             }
-            Err(tracker::Error(tracker::ErrorKind::TrackerError(ref s), _)) => {
+            Err(tracker::Error::TrackerError(ref s)) => {
                 if let Some(tracker) = self.trackers.iter_mut().find(|t| &*t.url == url) {
                     debug!("Got tracker level error for {}", tracker.url);
                     info!(
