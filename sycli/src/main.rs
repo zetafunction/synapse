@@ -1,6 +1,4 @@
 #[macro_use]
-extern crate error_chain;
-#[macro_use]
 extern crate prettytable;
 #[macro_use]
 extern crate serde_derive;
@@ -13,12 +11,10 @@ use rpc::criterion::Criterion;
 mod client;
 mod cmd;
 mod config;
-mod error;
 
 use std::process;
 
 use clap::{Arg, ArgAction, Command};
-use error_chain::ChainedError;
 use url::Url;
 
 use self::client::Client;
@@ -359,8 +355,8 @@ fn main() {
         Ok(c) => c,
         Err(e) => {
             eprintln!(
-                "Failed to connect to synapse, ensure your URI and password are correct, {}",
-                e.display_chain()
+                "Failed to connect to synapse, ensure your URI and password are correct, {:?}",
+                e
             );
             process::exit(1);
         }
@@ -407,7 +403,7 @@ fn main() {
                 output,
             );
             if let Err(e) = res {
-                eprintln!("Failed to add torrents: {}", e.display_chain());
+                eprintln!("Failed to add torrents: {:?}", e);
                 process::exit(1);
             }
         }
@@ -422,7 +418,7 @@ fn main() {
                 del_args.get_flag("files"),
             );
             if let Err(e) = res {
-                eprintln!("Failed to delete torrents: {}", e.display_chain());
+                eprintln!("Failed to delete torrents: {:?}", e);
                 process::exit(1);
             }
         }
@@ -433,7 +429,7 @@ fn main() {
                 dl_args.get_one::<String>("torrent").unwrap(),
             );
             if let Err(e) = res {
-                eprintln!("Failed to download torrent: {}", e.display_chain());
+                eprintln!("Failed to download torrent: {:?}", e);
                 process::exit(1);
             }
         }
@@ -444,7 +440,7 @@ fn main() {
                     let pri = priority_args.get_one::<String>("file pri").unwrap();
                     let res = cmd::set_file_pri(client, id, pri);
                     if let Err(e) = res {
-                        eprintln!("Failed to download torrent: {}", e.display_chain());
+                        eprintln!("Failed to download torrent: {:?}", e);
                         process::exit(1);
                     }
                 }
@@ -459,7 +455,7 @@ fn main() {
             let output = get_args.get_one::<String>("output").unwrap();
             let res = cmd::get(client, &id, output);
             if let Err(e) = res {
-                eprintln!("Failed to get resource: {}", e.display_chain());
+                eprintln!("Failed to get resource: {:?}", e);
                 process::exit(1);
             }
         }
@@ -474,7 +470,7 @@ fn main() {
             let output = list_args.get_one::<String>("output").unwrap();
             let res = cmd::list(client, kind, crit, output);
             if let Err(e) = res {
-                eprintln!("Failed to list torrents: {}", e.display_chain());
+                eprintln!("Failed to list torrents: {:?}", e);
                 process::exit(1);
             }
         }
@@ -488,7 +484,7 @@ fn main() {
                     .collect::<Vec<_>>(),
             );
             if let Err(e) = res {
-                eprintln!("Failed to pause torrents: {}", e.display_chain());
+                eprintln!("Failed to pause torrents: {:?}", e);
                 process::exit(1);
             }
         }
@@ -502,13 +498,13 @@ fn main() {
                     .collect::<Vec<_>>(),
             );
             if let Err(e) = res {
-                eprintln!("Failed to resume torrents: {}", e.display_chain());
+                eprintln!("Failed to resume torrents: {:?}", e);
                 process::exit(1);
             }
         }
         ("status", _) => {
             if let Err(e) = cmd::status(client) {
-                eprintln!("Failed to get server status: {}", e.display_chain());
+                eprintln!("Failed to get server status: {:?}", e);
                 process::exit(1);
             }
         }
@@ -525,13 +521,13 @@ fn main() {
                     if let Err(e) =
                         cmd::move_torrent(client, &id, dir, move_args.get_flag("skip files"))
                     {
-                        eprintln!("Failed to move torrent: {}", e.display_chain());
+                        eprintln!("Failed to move torrent: {:?}", e);
                         process::exit(1);
                     }
                 }
                 ("verify", _) => {
                     if let Err(e) = cmd::verify_torrent(client, &id) {
-                        eprintln!("Failed to verify integrity: {}", e.display_chain());
+                        eprintln!("Failed to verify integrity: {:?}", e);
                         process::exit(1);
                     }
                 }
@@ -546,7 +542,7 @@ fn main() {
                                 .map(String::as_str)
                                 .collect(),
                         ) {
-                            eprintln!("Failed to add trackers: {}", e.display_chain());
+                            eprintln!("Failed to add trackers: {:?}", e);
                             process::exit(1);
                         }
                     }
@@ -559,7 +555,7 @@ fn main() {
                                 .map(String::as_str)
                                 .collect(),
                         ) {
-                            eprintln!("Failed to remove trackers: {}", e.display_chain());
+                            eprintln!("Failed to remove trackers: {:?}", e);
                             process::exit(1);
                         }
                     }
@@ -572,7 +568,7 @@ fn main() {
                                 .map(String::as_str)
                                 .collect(),
                         ) {
-                            eprintln!("Failed to remove trackers: {}", e.display_chain());
+                            eprintln!("Failed to remove trackers: {:?}", e);
                             process::exit(1);
                         }
                     }
@@ -589,7 +585,7 @@ fn main() {
                                 .map(String::as_str)
                                 .collect(),
                         ) {
-                            eprintln!("Failed to add peers: {}", e.display_chain());
+                            eprintln!("Failed to add peers: {:?}", e);
                             process::exit(1);
                         }
                     }
@@ -602,7 +598,7 @@ fn main() {
                                 .map(String::as_str)
                                 .collect(),
                         ) {
-                            eprintln!("Failed to remove peers: {}", e.display_chain());
+                            eprintln!("Failed to remove peers: {:?}", e);
                             process::exit(1);
                         }
                     }
@@ -619,7 +615,7 @@ fn main() {
                                 .map(String::as_str)
                                 .collect(),
                         ) {
-                            eprintln!("Failed to add peers: {}", e.display_chain());
+                            eprintln!("Failed to add peers: {:?}", e);
                             process::exit(1);
                         }
                     }
@@ -633,7 +629,7 @@ fn main() {
                                 .map(String::as_str)
                                 .collect(),
                         ) {
-                            eprintln!("Failed to remove peers: {}", e.display_chain());
+                            eprintln!("Failed to remove peers: {:?}", e);
                             process::exit(1);
                         }
                     }
@@ -642,31 +638,31 @@ fn main() {
                 ("priority", priority_args) => {
                     let pri = priority_args.get_one::<String>("priority level").unwrap();
                     if let Err(e) = cmd::set_torrent_pri(client, &id, pri) {
-                        eprintln!("Failed to set torrent priority: {}", e.display_chain());
+                        eprintln!("Failed to set torrent priority: {:?}", e);
                         process::exit(1);
                     }
                 }
                 ("files", _) => {
                     if let Err(e) = cmd::get_files(client, &id, output) {
-                        eprintln!("Failed to get torrent files: {}", e.display_chain());
+                        eprintln!("Failed to get torrent files: {:?}", e);
                         process::exit(1);
                     }
                 }
                 ("peers", _) => {
                     if let Err(e) = cmd::get_peers(client, &id, output) {
-                        eprintln!("Failed to get torrent peers: {}", e.display_chain());
+                        eprintln!("Failed to get torrent peers: {:?}", e);
                         process::exit(1);
                     }
                 }
                 ("tags", _) => {
                     if let Err(e) = cmd::get_tags(client, &id) {
-                        eprintln!("Failed to get torrent tags: {}", e.display_chain());
+                        eprintln!("Failed to get torrent tags: {:?}", e);
                         process::exit(1);
                     }
                 }
                 ("trackers", _) => {
                     if let Err(e) = cmd::get_trackers(client, &id, output) {
-                        eprintln!("Failed to get torrent trackers: {}", e.display_chain());
+                        eprintln!("Failed to get torrent trackers: {:?}", e);
                         process::exit(1);
                     }
                 }
@@ -682,7 +678,7 @@ fn main() {
             let completion = watch_args.get_flag("completion");
             let res = cmd::watch(client, &id, output, completion);
             if let Err(e) = res {
-                eprintln!("Failed to watch resource: {}", e.display_chain());
+                eprintln!("Failed to watch resource: {:?}", e);
                 process::exit(1);
             }
         }

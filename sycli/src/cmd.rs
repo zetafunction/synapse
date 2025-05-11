@@ -3,6 +3,7 @@ use std::io::{self, Read};
 use std::path::Path;
 use std::{cmp, fs, mem};
 
+use anyhow::{anyhow, bail, Result};
 use base64::prelude::{Engine, BASE64_STANDARD};
 use prettytable::format::consts::FORMAT_NO_LINESEP_WITH_TITLE as TABLE_FORMAT;
 use prettytable::Table;
@@ -15,7 +16,6 @@ use rpc::resource::{CResourceUpdate, PathUpdate, Resource, ResourceKind, SResour
 use synapse_rpc as rpc;
 
 use crate::client::Client;
-use crate::error::{ErrorKind, Result, ResultExt};
 
 pub fn add(
     mut c: Client,
@@ -46,9 +46,8 @@ fn add_file(
     output: &str,
 ) -> Result<()> {
     let mut torrent = Vec::new();
-    let mut f = fs::File::open(file).chain_err(|| ErrorKind::FileIO)?;
-    f.read_to_end(&mut torrent)
-        .chain_err(|| ErrorKind::FileIO)?;
+    let mut f = fs::File::open(file)?;
+    f.read_to_end(&mut torrent)?;
 
     let msg = CMessage::UploadTorrent {
         serial: c.next_serial(),
@@ -65,7 +64,7 @@ fn add_file(
     let _resp = ureq::post(url)
         .header("Authorization", &format!("Bearer {}", token))
         .send(&torrent)
-        .chain_err(|| "Could not POST to synapse")?;
+        .map_err(|e| anyhow!(e).context("Could not POST to synapse"))?;
 
     match c.recv()? {
         SMessage::ResourcesExtant { ids, .. } => {
@@ -195,14 +194,14 @@ pub fn dl(mut c: Client, url: &str, name: &str) -> Result<()> {
         let mut resp = ureq::get(dl_url.as_str())
             .query("token", &dl_token)
             .call()
-            .chain_err(|| "Failed to download from synapse")?;
+            .map_err(|e| anyhow!(e).context("Failed to download from synapse"))?;
         if let Resource::File(f) = file {
             let p = Path::new(&f.path);
             if let Some(par) = p.parent() {
-                fs::create_dir_all(par).chain_err(|| ErrorKind::FileIO)?;
+                fs::create_dir_all(par)?;
             }
-            let mut f = fs::File::create(p).chain_err(|| ErrorKind::FileIO)?;
-            io::copy(&mut resp.body_mut().as_reader(), &mut f).chain_err(|| ErrorKind::FileIO)?;
+            let mut f = fs::File::create(p)?;
+            io::copy(&mut resp.body_mut().as_reader(), &mut f)?;
         } else {
             bail!("Expected a file resource");
         }
@@ -224,10 +223,7 @@ pub fn get_(c: &mut Client, id: &str, output: &str) -> Result<()> {
             println!("{}", res[0]);
         }
         "json" => {
-            println!(
-                "{}",
-                serde_json::to_string_pretty(&res[0]).chain_err(|| ErrorKind::Serialization)?
-            );
+            println!("{}", serde_json::to_string_pretty(&res[0])?);
         }
         _ => unreachable!(),
     }
@@ -321,10 +317,7 @@ pub fn list(mut c: Client, kind: &str, crit: Vec<Criterion>, output: &str) -> Re
         }
         table.printstd();
     } else {
-        println!(
-            "{}",
-            serde_json::to_string_pretty(&results).chain_err(|| ErrorKind::Serialization)?
-        );
+        println!("{}", serde_json::to_string_pretty(&results)?);
     }
     Ok(())
 }
@@ -438,10 +431,7 @@ pub fn watch(mut c: Client, id: &str, output: &str, completion: bool) -> Result<
                 println!("{}", res);
             }
             "json" => {
-                println!(
-                    "{}",
-                    serde_json::to_string(&res).chain_err(|| ErrorKind::Serialization)?
-                );
+                println!("{}", serde_json::to_string(&res)?);
             }
             _ => unreachable!(),
         }
@@ -672,7 +662,7 @@ fn get_tags_(c: &mut Client, id: &str) -> Result<(String, Vec<String>)> {
 }
 
 pub fn set_torrent_pri(mut c: Client, id: &str, pri: &str) -> Result<()> {
-    let p: u8 = pri.parse().chain_err(|| ErrorKind::Parse)?;
+    let p: u8 = pri.parse()?;
     let torrent = search_torrent_name(&mut c, id)?;
     if torrent.len() != 1 {
         bail!("Could not find appropriate torrent!");
@@ -690,7 +680,7 @@ pub fn set_torrent_pri(mut c: Client, id: &str, pri: &str) -> Result<()> {
 }
 
 pub fn set_file_pri(mut c: Client, id: &str, pri: &str) -> Result<()> {
-    let p: u8 = pri.parse().chain_err(|| ErrorKind::Parse)?;
+    let p: u8 = pri.parse()?;
     let update = CMessage::UpdateResource {
         serial: c.next_serial(),
         resource: CResourceUpdate {
@@ -735,10 +725,7 @@ fn print_torrent_res(c: &mut Client, id: &str, kind: ResourceKind, output: &str)
                 println!("{}", file);
             }
             "json" => {
-                println!(
-                    "{}",
-                    serde_json::to_string_pretty(&file).chain_err(|| ErrorKind::Serialization)?
-                );
+                println!("{}", serde_json::to_string_pretty(&file)?);
             }
             _ => unreachable!(),
         }
