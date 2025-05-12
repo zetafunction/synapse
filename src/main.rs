@@ -11,8 +11,6 @@ use alloc_system::System;
 static A: System = System;
 
 #[macro_use]
-extern crate error_chain;
-#[macro_use]
 extern crate lazy_static;
 #[macro_use]
 extern crate serde_derive;

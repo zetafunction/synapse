@@ -1,5 +1,3 @@
-#![allow(unexpected_cfgs)] // error_chain is unmaintained :(
-
 use super::{ID, VERSION};
 use crate::bencode::{self, BEncode};
 use crate::util::{addr_to_bytes, bytes_to_addr};
@@ -7,40 +5,21 @@ use crate::CONFIG;
 use num_bigint::BigUint;
 use std::collections::BTreeMap;
 use std::net::SocketAddr;
+use thiserror::Error;
 // use std::u16;
 
-error_chain! {
-    errors {
-        Generic(r: String) {
-            description("generic error")
-                display("generic node error: {}", r)
-        }
+type Result<T> = std::result::Result<T, DecodeError>;
 
-        Server(r: String) {
-            description("server error")
-                display("server error: {}", r)
-        }
-
-        Protocol(r: String) {
-            description("protocol error")
-                display("protocol error: {}", r)
-        }
-
-        MethodUnknown(r: String) {
-            description("method unknown")
-                display("method unknown: {}", r)
-        }
-
-        InvalidResponse(r: &'static str) {
-            description("invalid response")
-                display("invalid response: {}", r)
-        }
-
-        InvalidRequest(r: &'static str) {
-            description("invalid request")
-                display("invalid request: {}", r)
-        }
-    }
+#[derive(Debug, Error)]
+pub enum DecodeError {
+    #[error("failed to decode bencode: {0}")]
+    InvalidBencode(#[source] crate::bencode::BError),
+    #[error("bencode value not dict")]
+    NotDict,
+    #[error("bencode dict missing key: {0}")]
+    MissingKey(&'static str),
+    #[error("bencode dict: key {0} has invalid value: {1}")]
+    InvalidValue(&'static str, &'static str),
 }
 
 #[derive(Debug)]
@@ -89,7 +68,19 @@ pub enum ResponseKind {
         values: Vec<SocketAddr>,
         nodes: Vec<Node>,
     },
-    Error(ErrorKind),
+    Error(ErrorResponse),
+}
+
+#[derive(Debug)]
+pub(crate) enum ErrorResponse {
+    // Generic node error
+    Generic(String),
+    // Server error
+    Server(String),
+    // Protocl error
+    Protocol(String),
+    // Unknown method
+    UnknownMethod(String),
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -199,56 +190,33 @@ impl Request {
     }
 
     pub fn decode(buf: &[u8]) -> Result<Self> {
-        let b: BEncode = bencode::decode_buf(buf)
-            .chain_err(|| ErrorKind::InvalidRequest("Invalid BEncoded data"))?;
-        let mut d = b
-            .into_dict()
-            .ok_or_else(|| ErrorKind::InvalidRequest("Invalid BEncoded data(must be dict)"))?;
+        let b: BEncode = bencode::decode_buf(buf).map_err(DecodeError::InvalidBencode)?;
+        let mut d = b.into_dict().ok_or(DecodeError::NotDict)?;
         let transaction = d
             .remove(b"t".as_ref())
             .and_then(|b| b.into_bytes())
-            .ok_or_else(|| {
-                ErrorKind::InvalidRequest("Invalid BEncoded data(dict must have t field)")
-            })?;
+            .ok_or(DecodeError::MissingKey("`t`"))?;
         let version = d.remove(b"v".as_ref()).and_then(|b| b.into_string());
         let y = d
             .remove(b"y".as_ref())
             .and_then(|b| b.into_string())
-            .ok_or_else(|| {
-                Error::from(ErrorKind::InvalidRequest(
-                    "Invalid BEncoded data(dict must have y field)",
-                ))
-            })?;
+            .ok_or(DecodeError::MissingKey("`y`"))?;
         if y != "q" {
-            return Err(Error::from(ErrorKind::InvalidRequest(
-                "Invalid BEncoded data(request must have y: q field)",
-            )));
+            return Err(DecodeError::MissingKey("`y: q`"));
         }
         let q = d
             .remove(b"q".as_ref())
             .and_then(|b| b.into_string())
-            .ok_or_else(|| {
-                Error::from(ErrorKind::InvalidRequest(
-                    "Invalid BEncoded data(dict must have q field)",
-                ))
-            })?;
+            .ok_or(DecodeError::MissingKey("`q`"))?;
         let mut a = d
             .remove(b"a".as_ref())
             .and_then(|b| b.into_dict())
-            .ok_or_else(|| {
-                Error::from(ErrorKind::InvalidRequest(
-                    "Invalid BEncoded data(dict must have a field)",
-                ))
-            })?;
+            .ok_or(DecodeError::MissingKey("`a`"))?;
         let id = a
             .remove(b"id".as_ref())
             .and_then(|b| b.into_bytes())
             .and_then(|b| b.get(0..20).map(BigUint::from_bytes_be))
-            .ok_or_else(|| {
-                Error::from(ErrorKind::InvalidRequest(
-                    "Invalid BEncoded data(ping must have id field)",
-                ))
-            })?;
+            .ok_or(DecodeError::MissingKey("a: id"))?;
         let kind = match &q[..] {
             "ping" => RequestKind::Ping(id),
             "find_node" => {
@@ -256,11 +224,7 @@ impl Request {
                     .remove(b"target".as_ref())
                     .and_then(|b| b.into_bytes())
                     .and_then(|b| b.get(0..20).map(BigUint::from_bytes_be))
-                    .ok_or_else(|| {
-                        Error::from(ErrorKind::InvalidRequest(
-                            "Invalid BEncoded data(find_node must have target field)",
-                        ))
-                    })?;
+                    .ok_or(DecodeError::MissingKey("`find_node` must have `target`"))?;
                 RequestKind::FindNode { id, target }
             }
             "get_peers" => {
@@ -274,11 +238,7 @@ impl Request {
                         hash.copy_from_slice(&b[..20]);
                         Some(())
                     })
-                    .ok_or_else(|| {
-                        Error::from(ErrorKind::InvalidRequest(
-                            "Invalid BEncoded data(get_peers must have hash field)",
-                        ))
-                    })?;
+                    .ok_or(DecodeError::MissingKey("`get_peers` must have `info_hash`"))?;
                 RequestKind::GetPeers { id, hash }
             }
             "announce_peer" => {
@@ -292,11 +252,9 @@ impl Request {
                         hash.copy_from_slice(&b[..20]);
                         Some(())
                     })
-                    .ok_or_else(|| {
-                        Error::from(ErrorKind::InvalidRequest(
-                            "Invalid BEncoded data(announce_peer must have hash field)",
-                        ))
-                    })?;
+                    .ok_or(DecodeError::MissingKey(
+                        "`announce_peer` must have `info_hash`",
+                    ))?;
                 let implied_port = a
                     .remove(b"implied_port".as_ref())
                     .and_then(|b| b.into_int())
@@ -312,19 +270,11 @@ impl Request {
                             None
                         }
                     })
-                    .ok_or_else(|| {
-                        Error::from(ErrorKind::InvalidRequest(
-                            "Invalid BEncoded data(announce_peer must have port field)",
-                        ))
-                    })?;
+                    .ok_or(DecodeError::MissingKey("`announce_peer` must have `port`"))?;
                 let token = a
                     .remove(b"token".as_ref())
                     .and_then(|b| b.into_bytes())
-                    .ok_or_else(|| {
-                        Error::from(ErrorKind::InvalidRequest(
-                            "Invalid BEncoded data(announce_peer must have port field)",
-                        ))
-                    })?;
+                    .ok_or(DecodeError::MissingKey("`announce_peer` must have `token`"))?;
                 RequestKind::AnnouncePeer {
                     id,
                     hash,
@@ -334,10 +284,7 @@ impl Request {
                 }
             }
             _ => {
-                return Err(ErrorKind::InvalidRequest(
-                    "Invalid BEncoded data(request must be a valid query type)",
-                )
-                .into());
+                return Err(DecodeError::InvalidValue("`y: q`", "unexpected query type"));
             }
         };
         Ok(Request {
@@ -387,7 +334,7 @@ impl Response {
         }
     }
 
-    pub fn error(transaction: Vec<u8>, error: ErrorKind) -> Self {
+    pub fn error(transaction: Vec<u8>, error: ErrorResponse) -> Self {
         Response {
             transaction,
             kind: ResponseKind::Error(error),
@@ -434,23 +381,22 @@ impl Response {
             ResponseKind::Error(e) => {
                 let mut err = Vec::new();
                 match e {
-                    ErrorKind::Generic(msg) => {
+                    ErrorResponse::Generic(msg) => {
                         err.push(BEncode::from_int(201));
                         err.push(BEncode::from_str(&msg));
                     }
-                    ErrorKind::Server(msg) => {
+                    ErrorResponse::Server(msg) => {
                         err.push(BEncode::from_int(202));
                         err.push(BEncode::from_str(&msg));
                     }
-                    ErrorKind::Protocol(msg) => {
+                    ErrorResponse::Protocol(msg) => {
                         err.push(BEncode::from_int(203));
                         err.push(BEncode::from_str(&msg));
                     }
-                    ErrorKind::MethodUnknown(msg) => {
+                    ErrorResponse::UnknownMethod(msg) => {
                         err.push(BEncode::from_int(204));
                         err.push(BEncode::from_str(&msg));
                     }
-                    _ => unreachable!(),
                 }
                 b.insert(b"e".to_vec(), BEncode::List(err));
             }
@@ -465,65 +411,40 @@ impl Response {
     }
 
     pub fn decode(buf: &[u8]) -> Result<Self> {
-        let b: BEncode = bencode::decode_buf(buf)
-            .chain_err(|| ErrorKind::InvalidResponse("Invalid BEncoded data"))?;
-        let mut d = b.into_dict().ok_or_else(|| {
-            Error::from(ErrorKind::InvalidResponse(
-                "Invalid BEncoded data(must be dict)",
-            ))
-        })?;
+        let b: BEncode = bencode::decode_buf(buf).map_err(DecodeError::InvalidBencode)?;
+        let mut d = b.into_dict().ok_or(DecodeError::NotDict)?;
         let transaction = d
             .remove(b"t".as_ref())
             .and_then(|b| b.into_bytes())
-            .ok_or_else(|| {
-                Error::from(ErrorKind::InvalidResponse(
-                    "Invalid BEncoded data(dict must have t field)",
-                ))
-            })?;
+            .ok_or(DecodeError::MissingKey("`t`"))?;
         let y = d
             .remove(b"y".as_ref())
             .and_then(|b| b.into_string())
-            .ok_or_else(|| {
-                Error::from(ErrorKind::InvalidResponse(
-                    "Invalid BEncoded data(dict must have y field)",
-                ))
-            })?;
+            .ok_or(DecodeError::MissingKey("`y`"))?;
         match &y[..] {
             "e" => {
                 let mut e = d
                     .remove(b"e".as_ref())
                     .and_then(|b| b.into_list())
-                    .ok_or_else(|| {
-                        Error::from(ErrorKind::InvalidResponse(
-                            "Invalid BEncoded data(error resp must have e field)",
-                        ))
-                    })?;
+                    .ok_or(DecodeError::MissingKey("error response must have `e`"))?;
                 if e.len() != 2 {
-                    return Err(ErrorKind::InvalidResponse(
-                        "Invalid BEncoded data(e field must have two terms)",
-                    )
-                    .into());
+                    return Err(DecodeError::InvalidValue("`e`", "must be have two terms"));
                 }
-                let code = e.remove(0).into_int().ok_or_else(|| {
-                    Error::from(ErrorKind::InvalidResponse(
-                        "Invalid BEncoded data(e field must start with integer code)",
-                    ))
-                })?;
-                let msg = e.remove(0).into_string().ok_or_else(|| {
-                    Error::from(ErrorKind::InvalidResponse(
-                        "Invalid BEncoded data(e field must end with string data)",
-                    ))
-                })?;
+                let code = e.remove(0).into_int().ok_or(DecodeError::InvalidValue(
+                    "`e`",
+                    "first list item must be an integer",
+                ))?;
+                let msg = e.remove(0).into_string().ok_or(DecodeError::InvalidValue(
+                    "`e`",
+                    "second list item must be a string",
+                ))?;
                 let err = match code {
-                    201 => ErrorKind::Generic(msg),
-                    202 => ErrorKind::Server(msg),
-                    203 => ErrorKind::Protocol(msg),
-                    204 => ErrorKind::MethodUnknown(msg),
+                    201 => ErrorResponse::Generic(msg),
+                    202 => ErrorResponse::Server(msg),
+                    203 => ErrorResponse::Protocol(msg),
+                    204 => ErrorResponse::UnknownMethod(msg),
                     _ => {
-                        return Err(ErrorKind::InvalidResponse(
-                            "Invalid BEncoded data(invalid error code)",
-                        )
-                        .into())
+                        return Err(DecodeError::InvalidValue("`e[0]`", "invalid error code"));
                     }
                 };
                 Ok(Response {
@@ -535,21 +456,13 @@ impl Response {
                 let mut r = d
                     .remove(b"r".as_ref())
                     .and_then(|b| b.into_dict())
-                    .ok_or_else(|| {
-                        Error::from(ErrorKind::InvalidResponse(
-                            "Invalid BEncoded data(resp must have r field)",
-                        ))
-                    })?;
+                    .ok_or(DecodeError::MissingKey("response must have `r`"))?;
 
                 let id = r
                     .remove(b"id".as_ref())
                     .and_then(|b| b.into_bytes())
                     .and_then(|b| b.get(0..20).map(BigUint::from_bytes_be))
-                    .ok_or_else(|| {
-                        Error::from(ErrorKind::InvalidResponse(
-                            "Invalid BEncoded data(response must have id)",
-                        ))
-                    })?;
+                    .ok_or(DecodeError::MissingKey("response must have `id`"))?;
 
                 let kind = if let Some(token) =
                     r.remove(b"token".as_ref()).and_then(|b| b.into_bytes())
@@ -591,9 +504,7 @@ impl Response {
                 };
                 Ok(Response { transaction, kind })
             }
-            _ => {
-                Err(ErrorKind::InvalidResponse("Invalid BEncoded data(y field must be e/r)").into())
-            }
+            _ => Err(DecodeError::InvalidValue("`y`", "must be \"e\" or \"r\"")),
         }
     }
 
