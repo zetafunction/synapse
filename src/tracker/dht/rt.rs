@@ -190,7 +190,7 @@ impl RoutingTable {
                 if !self.contains_id(&id) {
                     return proto::Response::error(
                         req.transaction,
-                        proto::ErrorKind::Protocol("Unregistered peer!".to_owned()),
+                        proto::ErrorResponse::Protocol("Unregistered peer!".to_owned()),
                     );
                 }
                 {
@@ -198,7 +198,7 @@ impl RoutingTable {
                     if !node.token_valid(&token) {
                         return proto::Response::error(
                             req.transaction,
-                            proto::ErrorKind::Protocol("Bad token!".to_owned()),
+                            proto::ErrorResponse::Protocol("Bad token!".to_owned()),
                         );
                     }
                     node.update();
@@ -222,7 +222,7 @@ impl RoutingTable {
                 let token = if !self.contains_id(&id) {
                     return proto::Response::error(
                         req.transaction,
-                        proto::ErrorKind::Protocol("Unregistered peer!".to_owned()),
+                        proto::ErrorResponse::Protocol("Unregistered peer!".to_owned()),
                     );
                 } else {
                     self.get_node(&id).token.clone()

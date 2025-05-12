@@ -71,11 +71,6 @@ version = "0.4"
 default-features = false
 features = ["clock", "serde"]
 
-[dependencies.error-chain]
-version = "0.12.1"
-default-features = false
-features = []
-
 [dependencies.num-bigint]
 version = "0.2.0"
 default-features = false
