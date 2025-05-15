@@ -56,7 +56,27 @@ impl Reader {
                     }
                     _ => return Err(Error::Eof),
                 },
-                IOR::Err(e) => return Err(Error::Read(e)),
+                IOR::Err(e) => {
+                    // TLS requires sending a close_notify before the sender closes its socket to
+                    // provide message truncation attacks; if a sender fails to do so before EOF,
+                    // rustls returns an UnexpectedEof. With the exception of byte strings, bencode
+                    // types are not framed with an explicit length; however, they are implicitly
+                    // framed with an opening and closing delimiter. Truncation would leave
+                    // unmatched delimiters that would fail to decode, so handling it as a normal
+                    // EOF should be safe.
+                    return if e.kind() == io::ErrorKind::UnexpectedEof {
+                        match self.state {
+                            ReadState::Body => {
+                                let mut data = mem::replace(&mut self.data, Vec::with_capacity(0));
+                                data.truncate(self.idx);
+                                Ok(ReadRes::Done(data))
+                            }
+                            _ => Err(Error::Read(e)),
+                        }
+                    } else {
+                        Err(Error::Read(e))
+                    };
+                }
             }
         }
     }
