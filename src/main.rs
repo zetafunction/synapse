@@ -43,6 +43,7 @@ mod torrent;
 mod tracker;
 
 use ip_network_table::IpNetworkTable;
+use rand::seq::IndexedRandom;
 use std::process;
 use std::sync::atomic;
 
@@ -59,15 +60,17 @@ pub static SHUTDOWN: atomic::AtomicBool = atomic::AtomicBool::new(false);
 lazy_static! {
     pub static ref CONFIG: config::Config = config::Config::load();
     pub static ref PEER_ID: [u8; 20] = {
-        use rand::Rng;
-
         let mut pid = [0u8; 20];
         let prefix = b"-SY0010-";
-        pid[..prefix.len()].clone_from_slice(&prefix[..]);
+        pid[..prefix.len()].copy_from_slice(&prefix[..]);
+
+        // Based on libtorrent's list of URL-safe characters.
+        const URL_SAFE_CHARACTERS: &[u8] =
+            "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-_.!~*()".as_bytes();
 
         let mut rng = rand::rng();
         for p in pid.iter_mut().skip(prefix.len()) {
-            *p = rng.random();
+            *p = *URL_SAFE_CHARACTERS.choose(&mut rng).unwrap();
         }
         pid
     };
