@@ -256,7 +256,7 @@ fn default_max_announces() -> usize {
     50
 }
 fn default_min_announce_interval() -> u64 {
-    30 * 60
+    15 * 60
 }
 fn default_prune_timeout() -> u64 {
     15
