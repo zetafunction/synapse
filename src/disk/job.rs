@@ -7,6 +7,7 @@ use http_range::HttpRange;
 use sha1::{Digest, Sha1};
 use sstream::SStream;
 
+use super::cache::RequestedSize;
 use super::{BufCache, FileCache, JOB_TIME_SLICE};
 use crate::buffers::Buffer;
 use crate::torrent::{Info, LocIter};
@@ -316,9 +317,9 @@ impl Request {
                     fc.write_file_range(
                         pb,
                         if loc.allocate {
-                            Ok(loc.file_len)
+                            RequestedSize::WithFallocate(loc.file_len)
                         } else {
-                            Err(loc.file_len)
+                            RequestedSize::WithoutFallocate(loc.file_len)
                         },
                         loc.offset,
                         &data[loc.start..loc.end],

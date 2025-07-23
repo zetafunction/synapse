@@ -36,7 +36,7 @@ impl Disk {
             poll,
             ch,
             jobs,
-            files: FileCache::new(),
+            files: FileCache::new(CONFIG.net.max_open_files),
             bufs: BufCache::new(),
             active: VecDeque::new(),
             sequential: VecDeque::new(),

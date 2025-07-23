@@ -78,6 +78,7 @@ features = ["serde", "std"]
 
 [dev-dependencies]
 platina = "0.1.0"
+tempfile = "3.20.0"
 
 [profile.bench]
 opt-level = 3
