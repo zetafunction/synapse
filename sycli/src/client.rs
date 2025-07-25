@@ -42,7 +42,12 @@ impl Client {
                 other => other?,
             };
             stream.get_stream().set_nonblocking(false)?;
-            if let Ok((client, _response)) = ws::client(url.as_str(), stream) {
+            let config = ws::protocol::WebSocketConfig::default()
+                .max_message_size(None)
+                .max_frame_size(None);
+            if let Ok((client, _response)) =
+                ws::client::client_with_config(url.as_str(), stream, Some(config))
+            {
                 let mut c = Client {
                     ws: client,
                     serial: 0,
