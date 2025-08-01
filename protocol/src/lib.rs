@@ -67,7 +67,7 @@ impl<BF: Bitfield, Buf: Buffer> fmt::Debug for Message<BF, Buf> {
             Message::Unchoke => write!(f, "Message::Unchoke"),
             Message::Interested => write!(f, "Message::Interested"),
             Message::Uninterested => write!(f, "Message::Uninterested"),
-            Message::Have(p) => write!(f, "Message::Have({})", p),
+            Message::Have(p) => write!(f, "Message::Have({p})"),
             Message::Bitfield(_) => write!(f, "Message::Bitfield"),
             Message::Request {
                 index,
@@ -75,11 +75,10 @@ impl<BF: Bitfield, Buf: Buffer> fmt::Debug for Message<BF, Buf> {
                 length,
             } => write!(
                 f,
-                "Message::Request {{ idx: {}, begin: {}, len: {} }}",
-                index, begin, length
+                "Message::Request {{ idx: {index}, begin: {begin}, len: {length} }}"
             ),
             Message::Piece { index, begin, .. } => {
-                write!(f, "Message::Piece {{ idx: {}, begin: {} }}", index, begin)
+                write!(f, "Message::Piece {{ idx: {index}, begin: {begin} }}")
             }
             Message::Cancel {
                 index,
@@ -87,11 +86,10 @@ impl<BF: Bitfield, Buf: Buffer> fmt::Debug for Message<BF, Buf> {
                 length,
             } => write!(
                 f,
-                "Message::Cancel {{ idx: {}, begin: {}, len: {} }}",
-                index, begin, length
+                "Message::Cancel {{ idx: {index}, begin: {begin}, len: {length} }}"
             ),
-            Message::Port(port) => write!(f, "Message::Port({:?})", port),
-            Message::Extension { id, .. } => write!(f, "Message::Extension {{ id: {} }}", id),
+            Message::Port(port) => write!(f, "Message::Port({port:?})"),
+            Message::Extension { id, .. } => write!(f, "Message::Extension {{ id: {id} }}"),
         }
     }
 }

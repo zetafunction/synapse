@@ -416,7 +416,7 @@ impl<T: cio::CIO> Control<T> {
             self.cio.msg_rpc(rpc::CtlMessage::Error {
                 client,
                 serial,
-                reason: format!("Torrent {} already exists", id),
+                reason: format!("Torrent {id} already exists"),
             });
             return;
         }
@@ -496,21 +496,21 @@ impl<T: cio::CIO> Control<T> {
                             self.cio.msg_rpc(rpc::CtlMessage::Error {
                                 client,
                                 serial,
-                                reason: format!("Could not add peer {}", peer),
+                                reason: format!("Could not add peer {peer}"),
                             });
                         }
                     } else {
                         self.cio.msg_rpc(rpc::CtlMessage::Error {
                             client,
                             serial,
-                            reason: format!("Could not create peer {}", peer),
+                            reason: format!("Could not create peer {peer}"),
                         });
                     }
                 } else {
                     self.cio.msg_rpc(rpc::CtlMessage::Error {
                         client,
                         serial,
-                        reason: format!("torrent {} does not exist", id),
+                        reason: format!("torrent {id} does not exist"),
                     });
                 }
             }
@@ -523,7 +523,7 @@ impl<T: cio::CIO> Control<T> {
                 let hash_idx = &self.hash_idx;
                 let torrents = &mut self.torrents;
                 let cio = &mut self.cio;
-                let reason = format!("Could not add tracker {}", tracker);
+                let reason = format!("Could not add tracker {tracker}");
                 id_to_hash(&id)
                     .and_then(|d| hash_idx.get(d.as_ref()))
                     .and_then(|i| torrents.get_mut(i))
@@ -566,7 +566,7 @@ impl<T: cio::CIO> Control<T> {
                 let hash_idx = &mut self.hash_idx;
                 let torrents = &mut self.torrents;
                 let cio = &mut self.cio;
-                let reason = format!("Torrent {} does not exist", id);
+                let reason = format!("Torrent {id} does not exist");
                 id_to_hash(&id)
                     .and_then(|d| hash_idx.remove(d.as_ref()))
                     .and_then(|i| torrents.remove(&i))

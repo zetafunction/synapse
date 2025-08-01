@@ -19,7 +19,7 @@ pub fn args() -> Args {
     let matches = match opts.parse(&args[1..]) {
         Ok(m) => m,
         Err(f) => {
-            println!("Failed to parse options: {}", f);
+            println!("Failed to parse options: {f}");
             usage(1, opts);
         }
     };

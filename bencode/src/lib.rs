@@ -142,7 +142,7 @@ impl BEncode {
         while let Some(tok) = toks.pop() {
             match tok {
                 Token::B(&BEncode::Int(i)) => {
-                    write!(w, "i{}e", i)?;
+                    write!(w, "i{i}e")?;
                 }
                 Token::B(BEncode::String(s)) => {
                     write!(w, "{}:", s.len())?;

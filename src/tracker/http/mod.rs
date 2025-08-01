@@ -122,7 +122,7 @@ impl TrackerState {
                     // Some trackers incorrectly include trailing characters in the response.
                     let content = bencode::decode_buf_first(&data).map_err(|e| {
                         let data = std::str::from_utf8(&data)
-                            .map_or_else(|_| format!("{:?}", data), str::to_string);
+                            .map_or_else(|_| format!("{data:?}"), str::to_string);
                         Error::ResponseInvalidBencode(data, e)
                     })?;
                     let resp = TrackerResponse::from_bencode(content)?;

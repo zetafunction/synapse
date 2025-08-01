@@ -152,10 +152,7 @@ impl PeerConn {
     pub fn new_incoming(sock: TcpStream) -> io::Result<PeerConn> {
         let peer_ip = sock.peer_addr()?.ip();
         if let Some((_, &IP_FILTER_BLOCK)) = IP_FILTER.longest_match(peer_ip) {
-            let msg = format!(
-                "Incoming connection from peer {} blocked by ip_filter",
-                peer_ip
-            );
+            let msg = format!("Incoming connection from peer {peer_ip} blocked by ip_filter");
             debug!("{msg}");
             return Err(io::Error::new(io::ErrorKind::PermissionDenied, msg));
         }

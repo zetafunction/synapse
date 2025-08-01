@@ -652,10 +652,10 @@ impl fmt::Display for Resource {
                 writeln!(f, "  download: {} B/s", t.rate_down)?;
                 match t.throttle_up {
                     Some(u) if u >= 0 => {
-                        writeln!(f, "  throttle up: {} B/s", u)?;
+                        writeln!(f, "  throttle up: {u} B/s")?;
                     }
                     Some(u) => {
-                        writeln!(f, "  throttle up: invalid({})", u)?;
+                        writeln!(f, "  throttle up: invalid({u})")?;
                     }
                     None => {
                         writeln!(f, "  throttle up: unlimited")?;
@@ -663,10 +663,10 @@ impl fmt::Display for Resource {
                 }
                 match t.throttle_down {
                     Some(u) if u >= 0 => {
-                        writeln!(f, "  throttle down: {} B/s", u)?;
+                        writeln!(f, "  throttle down: {u} B/s")?;
                     }
                     Some(u) => {
-                        writeln!(f, "  throttle down: invalid({})", u)?;
+                        writeln!(f, "  throttle down: invalid({u})")?;
                     }
                     None => {
                         writeln!(f, "  throttle down: unlimited")?;
@@ -696,7 +696,7 @@ impl fmt::Display for Resource {
                 writeln!(f, "  modified at: {}", t.modified)?;
                 writeln!(f, "  status: {}", t.status.as_str())?;
                 if let Some(ref e) = t.error {
-                    writeln!(f, "  error: {}", e)?;
+                    writeln!(f, "  error: {e}")?;
                 }
                 writeln!(f, "  priority: {}", t.priority)?;
                 writeln!(f, "  progress: {}", t.progress)?;
@@ -706,7 +706,7 @@ impl fmt::Display for Resource {
                 writeln!(f, "  download: {} B/s", t.rate_down)?;
                 match t.throttle_up {
                     Some(u) if u >= 0 => {
-                        writeln!(f, "  throttle up: {} B/s", u)?;
+                        writeln!(f, "  throttle up: {u} B/s")?;
                     }
                     Some(_) => {
                         writeln!(f, "  throttle up: unlimited")?;
@@ -717,7 +717,7 @@ impl fmt::Display for Resource {
                 }
                 match t.throttle_down {
                     Some(u) if u >= 0 => {
-                        writeln!(f, "  throttle down: {} B/s", u)?;
+                        writeln!(f, "  throttle down: {u} B/s")?;
                     }
                     Some(_) => {
                         writeln!(f, "  throttle down: unlimited")?;
@@ -731,38 +731,38 @@ impl fmt::Display for Resource {
                 writeln!(f, "  peers: {}", t.peers)?;
                 writeln!(f, "  trackers: {}", t.trackers)?;
                 if let Some(s) = t.size {
-                    writeln!(f, "  size: {} B", s)?;
+                    writeln!(f, "  size: {s} B")?;
                 } else {
                     writeln!(f, "  size: Unknown (magnet)")?;
                 }
                 if let Some(p) = t.pieces {
-                    writeln!(f, "  pieces: {}", p)?;
+                    writeln!(f, "  pieces: {p}")?;
                 } else {
                     writeln!(f, "  pieces: Unknown (magnet)")?;
                 }
                 if let Some(p) = t.piece_size {
-                    writeln!(f, "  piece size: {} B", p)?;
+                    writeln!(f, "  piece size: {p} B")?;
                 } else {
                     writeln!(f, "  piece size: Unknown (magnet)")?;
                 }
                 if let Some(files) = t.files {
-                    writeln!(f, "  files: {}", files)?;
+                    writeln!(f, "  files: {files}")?;
                 } else {
                     writeln!(f, "  files: Unknown (magnet)")?;
                 }
                 write!(f, "}}")?;
             }
             Resource::File(t) => {
-                write!(f, "{:#?}", t)?;
+                write!(f, "{t:#?}")?;
             }
             Resource::Piece(t) => {
-                write!(f, "{:#?}", t)?;
+                write!(f, "{t:#?}")?;
             }
             Resource::Peer(t) => {
-                write!(f, "{:#?}", t)?;
+                write!(f, "{t:#?}")?;
             }
             Resource::Tracker(t) => {
-                write!(f, "{:#?}", t)?;
+                write!(f, "{t:#?}")?;
             }
         }
         Ok(())

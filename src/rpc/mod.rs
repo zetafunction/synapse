@@ -369,10 +369,7 @@ impl RPC {
                                     serde_json::to_string(&SMessage::TransferFailed(
                                         message::Error {
                                             serial: Some(serial),
-                                            reason: format!(
-                                                "Invalid torrent file uploaded, {}.",
-                                                e
-                                            ),
+                                            reason: format!("Invalid torrent file uploaded, {e}."),
                                         },
                                     ))
                                     .unwrap(),
@@ -387,8 +384,7 @@ impl RPC {
                                 serde_json::to_string(&SMessage::TransferFailed(message::Error {
                                     serial: Some(serial),
                                     reason: format!(
-                                        "Invalid torrent file uploaded, bad bencoded data: {}.",
-                                        e
+                                        "Invalid torrent file uploaded, bad bencoded data: {e}."
                                     ),
                                 }))
                                 .unwrap(),
@@ -577,7 +573,7 @@ impl RPC {
                 if e.is_syntax() || e.is_eof() {
                     let msg = SMessage::InvalidSchema(message::Error {
                         serial: None,
-                        reason: format!("JSON decode error: {}", e),
+                        reason: format!("JSON decode error: {e}"),
                     });
                     if c.send(ws::Frame::Text(serde_json::to_string(&msg).unwrap()))
                         .is_err()
@@ -597,7 +593,7 @@ impl RPC {
 
                     let msg = SMessage::InvalidSchema(message::Error {
                         serial,
-                        reason: format!("Invalid message format: {}", e),
+                        reason: format!("Invalid message format: {e}"),
                     });
                     if c.send(ws::Frame::Text(serde_json::to_string(&msg).unwrap()))
                         .is_err()

@@ -131,7 +131,7 @@ impl Reader {
                                     // we'll check the exact length later
                                     return RRes::Err(io::Error::new(
                                         io::ErrorKind::Other,
-                                        format!("Invalid bitfield length {}", mlen),
+                                        format!("Invalid bitfield length {mlen}"),
                                     ));
                                 }
                                 self.idx = 0;
@@ -195,7 +195,7 @@ impl Reader {
                         if plen as usize > BUF_SIZE {
                             return RRes::Err(io::Error::new(
                                 io::ErrorKind::Other,
-                                format!("Invalid pieces length {}", plen),
+                                format!("Invalid pieces length {plen}"),
                             ));
                         }
                         self.idx = 0;

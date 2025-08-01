@@ -136,7 +136,7 @@ impl From<Incoming> for Client {
             "HTTP/1.1 101 Switching Protocols".into(),
             "Connection: upgrade".into(),
             "Upgrade: websocket".into(),
-            format!("Sec-WebSocket-Accept: {}", accept),
+            format!("Sec-WebSocket-Accept: {accept}"),
         ];
         let data = lines.join("\r\n") + "\r\n\r\n";
         // Ignore error, it'll pop up again anyways
@@ -288,7 +288,7 @@ impl FragBuf {
 
 fn validate_dl(req: &httparse::Request<'_, '_>) -> Option<(String, Option<String>)> {
     req.path
-        .and_then(|path| Url::parse(&format!("http://localhost{}", path)).ok())
+        .and_then(|path| Url::parse(&format!("http://localhost{path}")).ok())
         .and_then(|url| {
             let id = if url.path().contains("/dl/") {
                 url.path_segments()
@@ -302,7 +302,7 @@ fn validate_dl(req: &httparse::Request<'_, '_>) -> Option<(String, Option<String
                 let pw = url
                     .query_pairs()
                     .find(|(k, _)| k == "token")
-                    .map(|(_, v)| format!("{}", v))
+                    .map(|(_, v)| format!("{v}"))
                     .and_then(|p| BASE64_STANDARD.decode(&p).ok())
                     .map(|p| {
                         p.as_ref()
@@ -378,11 +378,11 @@ fn validate_upgrade(req: &httparse::Request<'_, '_>) -> result::Result<String, b
     if CONFIG.rpc.auth {
         let auth = req
             .path
-            .and_then(|path| Url::parse(&format!("http://localhost{}", path)).ok())
+            .and_then(|path| Url::parse(&format!("http://localhost{path}")).ok())
             .and_then(|url| {
                 url.query_pairs()
                     .find(|(k, _)| k == "password")
-                    .map(|(_, v)| format!("{}", v))
+                    .map(|(_, v)| format!("{v}"))
                     .map(|p| p == CONFIG.rpc.password)
             })
             .or_else(|| {

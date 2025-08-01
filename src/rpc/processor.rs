@@ -169,7 +169,7 @@ impl Processor {
                     } else {
                         resp.push(SMessage::UnknownResource(Error {
                             serial: Some(serial),
-                            reason: format!("unknown resource id {}", id),
+                            reason: format!("unknown resource id {id}"),
                         }));
                     }
                 }
@@ -187,7 +187,7 @@ impl Processor {
                     } else {
                         resp.push(SMessage::UnknownResource(Error {
                             serial: Some(serial),
-                            reason: format!("unknown resource id {}", id),
+                            reason: format!("unknown resource id {id}"),
                         }));
                     }
                 }
@@ -296,7 +296,7 @@ impl Processor {
                 None => {
                     resp.push(SMessage::UnknownResource(Error {
                         serial: Some(serial),
-                        reason: format!("unknown resource id {}", id),
+                        reason: format!("unknown resource id {id}"),
                     }));
                 }
             },
@@ -378,7 +378,7 @@ impl Processor {
                 })),
                 None => resp.push(SMessage::UnknownResource(Error {
                     serial: Some(serial),
-                    reason: format!("Unknown resource {}", id),
+                    reason: format!("Unknown resource {id}"),
                 })),
             },
             CMessage::ResumeTorrent { serial, id } => match self.resources.get(&id) {
@@ -389,7 +389,7 @@ impl Processor {
                 })),
                 None => resp.push(SMessage::UnknownResource(Error {
                     serial: Some(serial),
-                    reason: format!("Unknown resource {}", id),
+                    reason: format!("Unknown resource {id}"),
                 })),
             },
             CMessage::AddPeer { serial, id, ip } => match self.resources.get(&id) {
@@ -404,7 +404,7 @@ impl Processor {
                     }
                     Err(_) => resp.push(SMessage::InvalidRequest(Error {
                         serial: Some(serial),
-                        reason: format!("Invalid peer IP address: {}", ip),
+                        reason: format!("Invalid peer IP address: {ip}"),
                     })),
                 },
                 Some(_) => resp.push(SMessage::InvalidResource(Error {
@@ -413,7 +413,7 @@ impl Processor {
                 })),
                 None => resp.push(SMessage::UnknownResource(Error {
                     serial: Some(serial),
-                    reason: format!("Unknown resource {}", id),
+                    reason: format!("Unknown resource {id}"),
                 })),
             },
             CMessage::AddTracker { serial, id, uri } => match self.resources.get(&id) {
@@ -428,7 +428,7 @@ impl Processor {
                     }
                     Err(_) => resp.push(SMessage::InvalidRequest(Error {
                         serial: Some(serial),
-                        reason: format!("Invalid tracker URI: {}", uri),
+                        reason: format!("Invalid tracker URI: {uri}"),
                     })),
                 },
                 Some(_) => resp.push(SMessage::InvalidResource(Error {
@@ -437,7 +437,7 @@ impl Processor {
                 })),
                 None => resp.push(SMessage::UnknownResource(Error {
                     serial: Some(serial),
-                    reason: format!("Unknown resource {}", id),
+                    reason: format!("Unknown resource {id}"),
                 })),
             },
             CMessage::UpdateTracker { serial, id } => match self.resources.get(&id) {
@@ -453,7 +453,7 @@ impl Processor {
                 })),
                 None => resp.push(SMessage::UnknownResource(Error {
                     serial: Some(serial),
-                    reason: format!("Unknown resource {}", id),
+                    reason: format!("Unknown resource {id}"),
                 })),
             },
             CMessage::ValidateResources { serial, mut ids } => {
@@ -469,7 +469,7 @@ impl Processor {
                     None => {
                         resp.push(SMessage::UnknownResource(Error {
                             serial: Some(serial),
-                            reason: format!("Unknown resource {}", id),
+                            reason: format!("Unknown resource {id}"),
                         }));
                         false
                     }
@@ -513,7 +513,7 @@ impl Processor {
                 Err(e) => {
                     resp.push(SMessage::InvalidRequest(Error {
                         serial: Some(serial),
-                        reason: format!("Invalid magnet: {}", e),
+                        reason: format!("Invalid magnet: {e}"),
                     }));
                 }
             },

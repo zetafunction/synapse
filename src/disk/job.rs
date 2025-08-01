@@ -571,7 +571,7 @@ impl Request {
                         if multipart {
                             let http_lines = match ranges.last() {
                                 Some(cur_range) => [
-                                    format!("\r\n--{}", MP_BOUNDARY),
+                                    format!("\r\n--{MP_BOUNDARY}"),
                                     "Content-Type: application/octet-stream".into(),
                                     format!(
                                         "Content-Range: bytes {}-{}/{}",
@@ -582,7 +582,7 @@ impl Request {
                                     "\r\n".into(),
                                 ]
                                 .join("\r\n"),
-                                None => format!("\r\n--{}--", MP_BOUNDARY),
+                                None => format!("\r\n--{MP_BOUNDARY}--"),
                             };
                             buf.extend(http_lines.into_bytes());
                         }

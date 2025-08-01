@@ -68,7 +68,7 @@ impl Resolver {
         let mut f = File::open("/etc/resolv.conf")?;
         f.read_to_end(&mut conf)?;
         let cfg = resolv_conf::Config::parse(&conf).map_err(|e| {
-            io::Error::new(io::ErrorKind::Other, format!("invalid resolv.conf: {}", e))
+            io::Error::new(io::ErrorKind::Other, format!("invalid resolv.conf: {e}"))
         })?;
 
         let servers: Vec<_> = cfg
@@ -216,7 +216,7 @@ impl Resolver {
                         Err(e) => {
                             return Err(io::Error::new(
                                 io::ErrorKind::Other,
-                                format!("malformed dns packet received: {}", e),
+                                format!("malformed dns packet received: {e}"),
                             ));
                         }
                     }

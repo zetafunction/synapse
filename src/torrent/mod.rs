@@ -576,7 +576,7 @@ impl<T: cio::CIO> Torrent<T> {
                     error!("Failed to query tracker {}: {}", tracker.url, e);
                     time += Duration::from_secs(CONFIG.net.min_announce_interval);
                     tracker.update = Some(time);
-                    let reason = format!("Couldn't contact tracker: {}", e);
+                    let reason = format!("Couldn't contact tracker: {e}");
                     tracker.status = TrackerStatus::Failure(reason);
                     tracker.last_announce = Utc::now();
                 }
@@ -832,7 +832,7 @@ impl<T: cio::CIO> Torrent<T> {
             }
             disk::Response::Error { err, .. } => {
                 error!("Disk error: {:?}", err);
-                self.status.error = Some(format!("{}", err));
+                self.status.error = Some(format!("{err}"));
                 self.announce_status();
                 for piece in self.validating.drain() {
                     self.picker.invalidate_piece(piece);
