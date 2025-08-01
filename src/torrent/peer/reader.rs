@@ -129,10 +129,9 @@ impl Reader {
                                 let mlen = BigEndian::read_u32(&self.prefix[0..4]);
                                 if mlen as usize > BUF_SIZE {
                                     // we'll check the exact length later
-                                    return RRes::Err(io::Error::new(
-                                        io::ErrorKind::Other,
-                                        format!("Invalid bitfield length {mlen}"),
-                                    ));
+                                    return RRes::Err(io::Error::other(format!(
+                                        "Invalid bitfield length {mlen}"
+                                    )));
                                 }
                                 self.idx = 0;
                                 self.state = State::Bitfield {
@@ -193,10 +192,9 @@ impl Reader {
                     IOR::Complete => {
                         let plen = BigEndian::read_u32(&self.prefix[0..4]) - 9;
                         if plen as usize > BUF_SIZE {
-                            return RRes::Err(io::Error::new(
-                                io::ErrorKind::Other,
-                                format!("Invalid pieces length {plen}"),
-                            ));
+                            return RRes::Err(io::Error::other(format!(
+                                "Invalid pieces length {plen}"
+                            )));
                         }
                         self.idx = 0;
                         self.state = State::Piece {

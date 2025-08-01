@@ -67,9 +67,8 @@ impl Resolver {
         let mut conf = Vec::with_capacity(4096);
         let mut f = File::open("/etc/resolv.conf")?;
         f.read_to_end(&mut conf)?;
-        let cfg = resolv_conf::Config::parse(&conf).map_err(|e| {
-            io::Error::new(io::ErrorKind::Other, format!("invalid resolv.conf: {e}"))
-        })?;
+        let cfg = resolv_conf::Config::parse(&conf)
+            .map_err(|e| io::Error::other(format!("invalid resolv.conf: {e}")))?;
 
         let servers: Vec<_> = cfg
             .nameservers
@@ -81,10 +80,7 @@ impl Resolver {
             .collect();
 
         if servers.is_empty() {
-            return Err(io::Error::new(
-                io::ErrorKind::Other,
-                "No nameservers found in resolv.conf!",
-            ));
+            return Err(io::Error::other("No nameservers found in resolv.conf!"));
         }
 
         Ok(Resolver {
@@ -105,10 +101,7 @@ impl Resolver {
         domain: &str,
     ) -> io::Result<Option<IpAddr>> {
         if self.servers.is_empty() {
-            return Err(io::Error::new(
-                io::ErrorKind::Other,
-                "No nameservers provided",
-            ));
+            return Err(io::Error::other("No nameservers provided"));
         }
 
         if let Some(entry) = self.cache.get(domain) {
@@ -214,10 +207,9 @@ impl Resolver {
                             }
                         }
                         Err(e) => {
-                            return Err(io::Error::new(
-                                io::ErrorKind::Other,
-                                format!("malformed dns packet received: {e}"),
-                            ));
+                            return Err(io::Error::other(format!(
+                                "malformed dns packet received: {e}"
+                            )));
                         }
                     }
                 }
