@@ -72,7 +72,7 @@ default-features = false
 features = ["clock", "serde"]
 
 [dependencies.num-bigint]
-version = "0.2.0"
+version = "0.4.0"
 default-features = false
 features = ["serde", "std"]
 
