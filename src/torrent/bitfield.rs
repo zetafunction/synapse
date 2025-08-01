@@ -14,7 +14,7 @@ pub enum Bitfield {
 
 impl Bitfield {
     pub fn new(len: u64) -> Bitfield {
-        let size = div_round_up!(len, 8);
+        let size = len.div_ceil(8);
 
         Bitfield::I {
             len,
@@ -24,7 +24,7 @@ impl Bitfield {
     }
 
     pub fn from(b: &[u8], len: u64) -> Bitfield {
-        let size = div_round_up!(len, 8);
+        let size = len.div_ceil(8);
         let mut vec = b.to_vec();
         vec.resize(size as usize, 0);
         let i = Bitfield::I {
@@ -92,7 +92,7 @@ impl Bitfield {
         if new_len > self.len() {
             return false;
         }
-        let new_size = div_round_up!(new_len, 8) as usize;
+        let new_size = new_len.div_ceil(8) as usize;
         if new_size != protocol::Bitfield::bytes(self) {
             return false;
         }
@@ -226,7 +226,7 @@ impl Bitfield {
 
 impl protocol::Bitfield for Bitfield {
     fn bytes(&self) -> usize {
-        let size = div_round_up!(self.len(), 8);
+        let size = self.len().div_ceil(8);
         size as usize
     }
 
