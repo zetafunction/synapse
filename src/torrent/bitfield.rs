@@ -216,7 +216,7 @@ impl Bitfield {
     }
 
     pub fn b64(&self) -> String {
-        BASE64_STANDARD.encode(&self.data())
+        BASE64_STANDARD.encode(self.data())
     }
 
     pub fn iter(&self) -> BitfieldIter<'_> {
