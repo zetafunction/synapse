@@ -86,14 +86,12 @@ impl Throttler {
 
     pub fn flush_ul(&mut self) -> Vec<usize> {
         let mut ul_data = self.ul_data.borrow_mut();
-        let flushed = ul_data.throttled.drain().collect();
-        flushed
+        ul_data.throttled.drain().collect()
     }
 
     pub fn flush_dl(&mut self) -> Vec<usize> {
         let mut dl_data = self.dl_data.borrow_mut();
-        let flushed = dl_data.throttled.drain().collect();
-        flushed
+        dl_data.throttled.drain().collect()
     }
 }
 
