@@ -218,9 +218,10 @@ impl FileCache {
                 Mode::ReadWrite(requested_size) => {
                     fs::create_dir_all(path.parent().unwrap())?;
                     let file = fs::OpenOptions::new()
-                        .write(true)
                         .create(true)
+                        .truncate(false)
                         .read(true)
+                        .write(true)
                         .open(path)?;
 
                     let alloc_failed = match requested_size {

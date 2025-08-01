@@ -288,8 +288,9 @@ impl Request {
                 let p = tpb.get(path.iter());
                 p.set_extension("temp");
                 let res = fs::OpenOptions::new()
-                    .write(true)
                     .create(true)
+                    .truncate(true)
+                    .write(true)
                     .open(&p)
                     .map(|mut f| f.write(&data[..]));
                 match res {
@@ -404,8 +405,9 @@ impl Request {
                 let temp = tpb.get(sd);
                 temp.push(hash_to_id(&hash) + ".temp");
                 let mut f = fs::OpenOptions::new()
-                    .write(true)
                     .create(true)
+                    .truncate(true)
+                    .write(true)
                     .open(&temp)?;
                 f.write_all(&data)?;
                 let actual = tpb2.get(sd);
