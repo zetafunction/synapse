@@ -137,7 +137,7 @@ pub fn trk_rpc_id(torrent: &[u8; 20], url: &str) -> String {
 }
 
 pub fn hash_to_id(hash: &[u8]) -> String {
-    let mut hash_str = String::new();
+    let mut hash_str = String::with_capacity(hash.len() * 2);
     for i in hash {
         write!(&mut hash_str, "{i:02X}").unwrap();
     }
