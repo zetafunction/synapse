@@ -697,10 +697,14 @@ fn parse_filter(searches: &str) -> Vec<Criterion> {
     // regular expression for finding search criteria that take string types
     let string_searches = Regex::new(
         r#"(?x)
-        \b(name|path|status|tracker) # field name
-        (==|!=|::|:)                 # delimiter
-        ("(.+?)"                     # quoted argument
-        |([0-9.a-zA-Z]+))            # unquoted argument
+        # field name
+        \b(id|name|path|status|tracker|error)
+        # delimiter
+        (==|!=|::|:)
+        # quoted argument
+        ("(.+?)"
+        # unquoted argument
+        |([0-9.a-zA-Z]+))
         "#,
     )
     .unwrap();
@@ -708,13 +712,17 @@ fn parse_filter(searches: &str) -> Vec<Criterion> {
     // regular expression for finding search criteria that take numeric types
     let numeric_searches = Regex::new(
         r#"(?x)
+        # field name
         \b(size|progress|priority|availability
            |rate_up|rate_down|throttle_up|throttle_down
            |transferred_up|transferred_down
-           |peers|trackers|files)    # field name
-        (>=|<=|==|!=|>|<)            # delimiter
-        ("([0-9.]+?)"                # quoted argument
-        |([0-9.]+))                  # unquoted argument
+           |peers|trackers|files)
+        # delimiter
+        (>=|<=|==|!=|>|<)
+        # quoted argument
+        ("([0-9.]+?)"
+        # unquoted argument
+        |([0-9.]+))
         "#,
     )
     .unwrap();
