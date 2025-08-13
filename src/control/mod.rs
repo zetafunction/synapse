@@ -176,7 +176,7 @@ impl<T: cio::CIO> Control<T> {
         }
         debug!("Serializing torrents!");
         for torrent in self.torrents.values_mut() {
-            torrent.serialize();
+            torrent.serialize_if_dirty();
         }
     }
 

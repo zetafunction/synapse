@@ -69,6 +69,8 @@ pub struct Torrent<T: cio::CIO> {
     status: Status,
     choker: choker::Choker,
     dirty: bool,
+    // Used to validate that the dirty bit is correctly maintained.
+    dirty_hash: Option<blake3::Hash>,
     path: Option<String>,
     // Stored info-dictionary bytes for use in BEP9 (Peer metadata transfer)
     info_bytes: Vec<u8>,
@@ -292,6 +294,7 @@ impl<T: cio::CIO> Torrent<T> {
             trackers,
             choker: choker::Choker::new(),
             dirty: true,
+            dirty_hash: None,
             status,
             info_bytes,
             info_idx,
@@ -414,6 +417,7 @@ impl<T: cio::CIO> Torrent<T> {
             trackers,
             choker: choker::Choker::new(),
             dirty: false,
+            dirty_hash: Some(blake3::hash(data)),
             status: Status {
                 paused: d.status.paused,
                 validating: None,
@@ -439,7 +443,23 @@ impl<T: cio::CIO> Torrent<T> {
         Some(t)
     }
 
-    pub fn serialize(&mut self) {
+    pub fn serialize_if_dirty(&mut self) {
+        if !self.dirty {
+            let hash = blake3::hash(&self.serialized_data());
+            if Some(hash) != self.dirty_hash {
+                error!(
+                    "{} had an inconsistent dirty bit; forcing serialization",
+                    util::hash_to_id(&self.info.hash)
+                );
+                self.serialize();
+            }
+            return;
+        }
+
+        self.serialize();
+    }
+
+    fn serialized_data(&self) -> Vec<u8> {
         let d = Session {
             info: session::torrent::current::Info {
                 name: self.info.name.clone(),
@@ -494,7 +514,12 @@ impl<T: cio::CIO> Torrent<T> {
                 .map(|trk| trk.url.as_str().to_owned())
                 .collect(),
         };
-        let data = bincode::serialize(&d).expect("Serialization failed!");
+        bincode::serialize(&d).expect("Serialization failed!")
+    }
+
+    fn serialize(&mut self) {
+        let data = self.serialized_data();
+        self.dirty_hash = Some(blake3::hash(&data));
         debug!("Sending serialization request!");
         self.cio
             .msg_disk(disk::Request::serialize(self.id, data, self.info.hash));
@@ -687,10 +712,6 @@ impl<T: cio::CIO> Torrent<T> {
 
     pub fn id(&self) -> usize {
         self.id
-    }
-
-    pub fn dirty(&self) -> bool {
-        self.dirty
     }
 
     pub fn uploaded(&self) -> u64 {
