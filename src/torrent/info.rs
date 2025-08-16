@@ -18,10 +18,13 @@ pub struct Info {
     pub comment: Option<String>,
     pub piece_len: u32,
     pub total_len: u64,
+    /// Piece hashes
     pub hashes: Vec<Vec<u8>>,
+    /// The hash of the info dictionary (aka infohash)
     pub hash: [u8; 20],
     pub files: Vec<File>,
     pub private: bool,
+    /// Name field from the info dictionary, if any
     pub be_name: Option<Vec<u8>>,
     /// Maps piece idx -> file idx + file offset
     pub piece_idx: Vec<(usize, u64)>,
@@ -598,6 +601,76 @@ mod tests {
         assert_eq!(info.piece_len(pieces), end as u32);
         assert_eq!(info.block_len(pieces, 0), 16_384);
         assert_eq!(info.block_len(pieces, 16_384), (end % 16_384) as u32);
+    }
+
+    #[test]
+    fn generate_piece_idx() {
+        let f = vec![File {
+            path: PathBuf::from("a"),
+            length: 100,
+        }];
+        assert_eq!(Info::generate_piece_idx(1, 1024, &f), vec![(0, 0)]);
+
+        let f = vec![File {
+            path: PathBuf::from("a"),
+            length: 1024,
+        }];
+        assert_eq!(Info::generate_piece_idx(1, 1024, &f), vec![(0, 0)]);
+
+        let f = vec![
+            File {
+                path: PathBuf::from("a"),
+                length: 1000,
+            },
+            File {
+                path: PathBuf::from("b"),
+                length: 24,
+            },
+        ];
+        assert_eq!(Info::generate_piece_idx(1, 1024, &f), vec![(0, 0)]);
+
+        let f = vec![
+            File {
+                path: PathBuf::from("a"),
+                length: 1000,
+            },
+            File {
+                path: PathBuf::from("b"),
+                length: 24,
+            },
+            File {
+                path: PathBuf::from("c"),
+                length: 1024,
+            },
+        ];
+        assert_eq!(Info::generate_piece_idx(2, 1024, &f), vec![(0, 0), (2, 0)]);
+
+        let f = vec![
+            File {
+                path: PathBuf::from("a"),
+                length: 1000,
+            },
+            File {
+                path: PathBuf::from("b"),
+                length: 1000,
+            },
+            File {
+                path: PathBuf::from("c"),
+                length: 1000,
+            },
+            File {
+                path: PathBuf::from("d"),
+                length: 1000,
+            },
+            File {
+                path: PathBuf::from("e"),
+                length: 1000,
+            },
+        ];
+        assert_eq!(
+            Info::generate_piece_idx(5, 1024, &f),
+            vec![(0, 0), (1, 24), (2, 48), (3, 72), (4, 96)]
+        );
     }
 
     #[test]
