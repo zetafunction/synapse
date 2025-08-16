@@ -27,18 +27,11 @@ pub mod torrent {
         }
     }
 
-    impl Session {
-        pub fn migrate(self) -> Self {
-            self
-        }
-    }
-
     pub mod ver_fa1b6f {
-        use super::Bitfield;
-
         use chrono::{DateTime, Utc};
-
         use std::path::PathBuf;
+
+        use super::Bitfield;
 
         #[derive(Deserialize, Debug, PartialEq, Serialize)]
         pub struct Session {
@@ -94,15 +87,21 @@ pub mod torrent {
             // Torrent has acquired all pieces, regardless of validity
             Complete,
         }
+
+        impl Session {
+            pub fn migrate(self) -> Self {
+                self
+            }
+        }
     }
 
     pub mod ver_6e27af {
         pub use self::next::{File, Status, StatusState};
-        pub use super::ver_fa1b6f as next;
-
-        use super::Bitfield;
 
         use chrono::{DateTime, Utc};
+
+        use super::ver_fa1b6f as next;
+        use super::Bitfield;
 
         #[derive(Serialize, Deserialize)]
         pub struct Session {
@@ -170,10 +169,11 @@ pub mod torrent {
 
     pub mod ver_249b1b {
         pub use self::next::{File, Info, Status, StatusState};
-        pub use super::ver_6e27af as next;
-        use super::Bitfield;
 
         use chrono::{DateTime, Utc};
+
+        use super::ver_6e27af as next;
+        use super::Bitfield;
 
         #[derive(Serialize, Deserialize)]
         pub struct Session {
@@ -216,10 +216,10 @@ pub mod torrent {
     }
 
     pub mod ver_5f166d {
+        use chrono::{DateTime, Utc};
+
         use super::ver_249b1b as next;
         use super::Bitfield;
-
-        use chrono::{DateTime, Utc};
 
         #[derive(Serialize, Deserialize)]
         pub struct Session {
@@ -343,11 +343,11 @@ pub mod torrent {
     }
 
     pub mod ver_8e1121 {
+        use chrono::{DateTime, Utc};
+
         use self::next::{Info, Status};
         use super::ver_5f166d as next;
         use super::Bitfield;
-
-        use chrono::{DateTime, Utc};
 
         #[derive(Serialize, Deserialize)]
         pub struct Session {
