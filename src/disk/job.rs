@@ -49,6 +49,7 @@ pub enum Request {
         tid: usize,
         data: Vec<u8>,
         hash: [u8; 20],
+        extension: Option<&'static str>,
     },
     Delete {
         tid: usize,
@@ -138,8 +139,19 @@ impl Request {
         }
     }
 
-    pub fn serialize(tid: usize, data: Vec<u8>, hash: [u8; 20]) -> Request {
-        Request::Serialize { tid, data, hash }
+    pub fn serialize(
+        tid: usize,
+        data: Vec<u8>,
+        hash: [u8; 20],
+        extension: Option<&'static str>,
+    ) -> Request {
+        assert!(extension.is_none_or(|e| e.starts_with('.')));
+        Request::Serialize {
+            tid,
+            data,
+            hash,
+            extension,
+        }
     }
 
     pub fn validate(tid: usize, info: Arc<Info>, path: Option<String>) -> Request {
@@ -401,9 +413,15 @@ impl Request {
                 }
                 return Ok(JobRes::Resp(Response::moved(tid, to)));
             }
-            Request::Serialize { data, hash, .. } => {
+            Request::Serialize {
+                data,
+                hash,
+                extension,
+                ..
+            } => {
+                let extension = extension.unwrap_or("");
                 let temp = tpb.get(sd);
-                temp.push(hash_to_id(&hash) + ".temp");
+                temp.push(hash_to_id(&hash) + extension + ".temp");
                 let mut f = fs::OpenOptions::new()
                     .create(true)
                     .truncate(true)
@@ -411,7 +429,7 @@ impl Request {
                     .open(&temp)?;
                 f.write_all(&data)?;
                 let actual = tpb2.get(sd);
-                actual.push(hash_to_id(&hash));
+                actual.push(hash_to_id(&hash) + extension);
                 fs::rename(temp, actual)?;
             }
             Request::Delete {

@@ -1,4 +1,3 @@
-use std::io::Read;
 use std::net::TcpStream;
 use std::path::PathBuf;
 use std::sync::atomic;
@@ -176,7 +175,7 @@ impl<T: cio::CIO> Control<T> {
         }
         debug!("Serializing torrents!");
         for torrent in self.torrents.values_mut() {
-            torrent.serialize_if_dirty();
+            torrent.serialize_session_if_dirty();
         }
     }
 
@@ -195,7 +194,12 @@ impl<T: cio::CIO> Control<T> {
         }
 
         debug!("Deserializing torrents!");
-        for entry in fs::read_dir(sd)? {
+        // Eagerly read the list of files in the session directory; deserializing a torrent may
+        // migrate the data on disk to a new format and modify/write files to the session
+        // directory. POSIX does not provide any guarantees about how `opendir()` and `readdir()`
+        // will behave with respect to concurrent mutations.
+        let entries: Vec<_> = fs::read_dir(sd)?.collect();
+        for entry in entries {
             if self.deserialize_torrent(entry).is_err() {
                 error!(
                     "Please ensure that session data is not corrupted and not past version {}",
@@ -215,14 +219,28 @@ impl<T: cio::CIO> Control<T> {
             return Ok(());
         }
         trace!("Attempting to deserialize file {:?}", dir);
-        let mut f = fs::File::open(dir.path())?;
-        let mut data = Vec::new();
-        f.read_to_end(&mut data)?;
-        trace!("Succesfully read file");
+        let mut path = dir.path();
+        let session_data = fs::read(&path)?;
+        trace!("Succesfully read session file");
+        assert!(path.set_extension("info"));
+        let info_data = match fs::read(&path) {
+            Ok(data) => Ok(Some(data)),
+            // Older versions of synapse serialized the info as part of the session state, so a
+            // missing info file is not necessarily fatal.
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(None),
+            Err(e) => Err(e),
+        }?;
+        trace!("Successully read info file");
 
         let tid = self.tid_cnt;
         let throttle = self.throttler.get_throttle(tid);
-        if let Some(t) = Torrent::deserialize(tid, &data, throttle, self.cio.new_handle()) {
+        if let Some(t) = Torrent::deserialize(
+            tid,
+            &session_data,
+            info_data.as_deref(),
+            throttle,
+            self.cio.new_handle(),
+        ) {
             trace!("Succesfully parsed torrent file {:?}", dir.path());
             self.hash_idx.insert(t.info().hash, tid);
             self.tid_cnt += 1;

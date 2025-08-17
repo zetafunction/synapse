@@ -35,7 +35,7 @@ pub struct SessionUpdate;
 impl<T: cio::CIO> Job<T> for SessionUpdate {
     fn update(&mut self, torrents: &mut UHashMap<Torrent<T>>) {
         for (_, torrent) in torrents.iter_mut() {
-            torrent.serialize_if_dirty();
+            torrent.serialize_session_if_dirty();
         }
     }
 }

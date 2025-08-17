@@ -320,11 +320,16 @@ impl<T: cio::CIO> Torrent<T> {
 
     pub fn deserialize(
         id: usize,
-        data: &[u8],
+        session_data: &[u8],
+        info_data: Option<&[u8]>,
         mut throttle: Throttle,
         cio: T,
     ) -> Option<Torrent<T>> {
-        let d = session::torrent::load(data)?;
+        let (migrated, d) = match session::torrent::load(session_data, info_data) {
+            session::torrent::LoadResult::Ok(torrent) => (false, torrent),
+            session::torrent::LoadResult::Migrated(torrent) => (true, torrent),
+            session::torrent::LoadResult::Failed => return None,
+        };
         debug!("Torrent data deserialized!");
         let peers = UHashMap::default();
         let leechers = FHashSet::default();
@@ -332,11 +337,11 @@ impl<T: cio::CIO> Torrent<T> {
         let info = Arc::new(Info {
             name: d.info.name,
             announce: d
-                .info
+                .session
                 .announce
                 .and_then(|u| Url::parse(&u).ok().map(Arc::new)),
-            comment: d.info.comment,
-            creator: d.info.creator,
+            comment: d.session.comment,
+            creator: d.session.creator,
             piece_len: d.info.piece_len,
             total_len: d.info.total_len,
             hashes: d.info.hashes,
@@ -366,12 +371,13 @@ impl<T: cio::CIO> Torrent<T> {
         } else {
             vec![]
         };
-        let pieces = Bitfield::from(&d.pieces.data, d.pieces.len);
-        let picker = picker::Picker::new(&info, &pieces, &d.priorities);
-        throttle.set_ul_rate(d.throttle_ul);
-        throttle.set_dl_rate(d.throttle_dl);
+        let pieces = Bitfield::from(&d.session.pieces.data, d.session.pieces.len);
+        let picker = picker::Picker::new(&info, &pieces, &d.session.priorities);
+        throttle.set_ul_rate(d.session.throttle_ul);
+        throttle.set_dl_rate(d.session.throttle_dl);
 
         let mut trackers: VecDeque<_> = d
+            .session
             .trackers
             .into_iter()
             .filter_map(|url| Url::parse(&url).ok())
@@ -404,38 +410,43 @@ impl<T: cio::CIO> Torrent<T> {
             pieces,
             validating: FHashSet::default(),
             picker,
-            uploaded: d.uploaded,
-            downloaded: d.downloaded,
+            uploaded: d.session.uploaded,
+            downloaded: d.session.downloaded,
             wasted: 0,
             files,
             stat: stat::EMA::new(),
-            priorities: Arc::new(d.priorities),
-            priority: d.priority,
+            priorities: Arc::new(d.session.priorities),
+            priority: d.session.priority,
             cio,
             leechers,
             throttle,
             trackers,
             choker: choker::Choker::new(),
             dirty: false,
-            dirty_hash: Some(blake3::hash(data)),
+            dirty_hash: Some(blake3::hash(session_data)),
             status: Status {
-                paused: d.status.paused,
+                paused: d.session.status.paused,
                 validating: None,
-                error: d.status.error,
-                state: match d.status.state {
+                error: d.session.status.error,
+                state: match d.session.status.state {
                     session::torrent::current::StatusState::Magnet => StatusState::Magnet,
                     session::torrent::current::StatusState::Incomplete => StatusState::Incomplete,
                     session::torrent::current::StatusState::Complete => StatusState::Complete,
                 },
             },
-            path: d.path,
+            path: d.session.path,
             info_bytes,
             info_idx,
-            created: d.created,
+            created: d.session.created,
         };
+        if migrated {
+            t.serialize_info();
+            t.serialize_session();
+        }
+        // TODO: Shouldn't this mark the torrent as dirty?
         t.status.error = None;
         t.start(false);
-        if d.status.validating {
+        if d.session.status.validating {
             t.validate();
         } else {
             t.announce_start();
@@ -443,47 +454,27 @@ impl<T: cio::CIO> Torrent<T> {
         Some(t)
     }
 
-    pub fn serialize_if_dirty(&mut self) {
+    pub fn serialize_session_if_dirty(&mut self) {
         if !self.dirty {
-            let hash = blake3::hash(&self.serialized_data());
+            let hash = blake3::hash(&self.serialized_session_data());
             if Some(hash) != self.dirty_hash {
                 error!(
                     "{} had an inconsistent dirty bit; forcing serialization",
                     util::hash_to_id(&self.info.hash)
                 );
-                self.serialize();
+                self.serialize_session();
             }
             return;
         }
 
-        self.serialize();
+        self.serialize_session();
     }
 
-    fn serialized_data(&self) -> Vec<u8> {
+    fn serialized_session_data(&self) -> Vec<u8> {
         let d = Session {
-            info: session::torrent::current::Info {
-                name: self.info.name.clone(),
-                announce: self.info.announce.as_ref().map(|a| a.as_str().to_owned()),
-                comment: self.info.comment.clone(),
-                creator: self.info.creator.clone(),
-                piece_len: self.info.piece_len,
-                total_len: self.info.total_len,
-                hashes: self.info.hashes.clone(),
-                hash: self.info.hash,
-                files: self
-                    .info
-                    .files
-                    .iter()
-                    .cloned()
-                    .map(|f| session::torrent::current::File {
-                        path: f.path,
-                        length: f.length,
-                    })
-                    .collect(),
-                private: self.info.private,
-                be_name: self.info.be_name.clone(),
-                piece_idx: self.info.piece_idx.clone(),
-            },
+            announce: self.info.announce.as_ref().map(|a| a.as_str().to_owned()),
+            comment: self.info.comment.clone(),
+            creator: self.info.creator.clone(),
             pieces: session::torrent::Bitfield {
                 data: self.pieces.data(),
                 len: self.pieces.len(),
@@ -517,12 +508,47 @@ impl<T: cio::CIO> Torrent<T> {
         bincode::serialize(&d).expect("Serialization failed!")
     }
 
-    fn serialize(&mut self) {
-        let data = self.serialized_data();
+    fn serialize_info(&mut self) {
+        let info = session::torrent::current::Info {
+            name: self.info.name.clone(),
+            piece_len: self.info.piece_len,
+            total_len: self.info.total_len,
+            hashes: self.info.hashes.clone(),
+            hash: self.info.hash,
+            files: self
+                .info
+                .files
+                .iter()
+                .cloned()
+                .map(|f| session::torrent::current::File {
+                    path: f.path,
+                    length: f.length,
+                })
+                .collect(),
+            private: self.info.private,
+            be_name: self.info.be_name.clone(),
+            piece_idx: self.info.piece_idx.clone(),
+        };
+        let data = bincode::serialize(&info).expect("Serialization failed!");
+        debug!("Sending info serialization request!");
+        self.cio.msg_disk(disk::Request::serialize(
+            self.id,
+            data,
+            self.info.hash,
+            Some(".info"),
+        ));
+    }
+
+    fn serialize_session(&mut self) {
+        let data = self.serialized_session_data();
         self.dirty_hash = Some(blake3::hash(&data));
-        debug!("Sending serialization request!");
-        self.cio
-            .msg_disk(disk::Request::serialize(self.id, data, self.info.hash));
+        debug!("Sending session serialization request!");
+        self.cio.msg_disk(disk::Request::serialize(
+            self.id,
+            data,
+            self.info.hash,
+            None,
+        ));
         self.dirty = false;
     }
 
@@ -882,7 +908,7 @@ impl<T: cio::CIO> Torrent<T> {
                 self.status.state = StatusState::Complete;
                 self.picker.done();
                 self.set_finished();
-                self.serialize();
+                self.serialize_session();
             }
         } else if self.status.state == StatusState::Complete {
             self.status.state = StatusState::Incomplete;
@@ -1465,7 +1491,8 @@ impl<T: cio::CIO> Torrent<T> {
             self.update_rpc_transfer();
         }
         if serialize {
-            self.serialize();
+            self.serialize_info();
+            self.serialize_session();
         }
     }
 
@@ -1539,7 +1566,7 @@ impl<T: cio::CIO> Torrent<T> {
             .msg_rpc(rpc::CtlMessage::Update(vec![SResourceUpdate::Resource(
                 Cow::Owned(update),
             )]));
-        self.serialize();
+        self.serialize_session();
 
         let seq = self.picker.is_sequential();
         self.picker = Picker::new(&self.info, &self.pieces, &self.priorities);
