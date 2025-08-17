@@ -7,7 +7,6 @@ mod picker;
 use std::borrow::Cow;
 use std::collections::{BTreeMap, VecDeque};
 use std::fmt;
-use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
@@ -1502,7 +1501,6 @@ impl<T: cio::CIO> Torrent<T> {
         }
         if let Some(req) = tracker::Request::started(self) {
             self.cio.msg_trk(req);
-            self.dump_torrent_file();
         }
         self.dht_announce();
     }
@@ -1540,14 +1538,6 @@ impl<T: cio::CIO> Torrent<T> {
         ]));
     }
 
-    fn dump_torrent_file(&mut self) {
-        let data = self.info.to_torrent_bencode().encode_to_buf();
-        let mut path = PathBuf::from(&CONFIG.disk.session);
-        path.push(util::hash_to_id(&self.info.hash));
-        path.set_extension("torrent");
-        self.cio.msg_disk(disk::Request::WriteFile { data, path });
-    }
-
     fn magnet_complete(&mut self) {
         self.status.state = StatusState::Incomplete;
         self.announce_status();
@@ -1573,7 +1563,6 @@ impl<T: cio::CIO> Torrent<T> {
         self.change_picker(seq);
         self.files = Files::new(&self.info, &self.pieces);
         self.validate();
-        self.dump_torrent_file();
     }
 
     fn set_path(&mut self, path: String) {

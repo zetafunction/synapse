@@ -155,19 +155,6 @@ impl Info {
         !self.hashes.is_empty()
     }
 
-    pub fn to_torrent_bencode(&self) -> BEncode {
-        let mut torrent = BTreeMap::new();
-        let info = self.to_bencode();
-        self.announce.as_ref().map(|url| {
-            torrent.insert(
-                b"announce".to_vec(),
-                BEncode::String(url.as_str().as_bytes().to_owned()),
-            )
-        });
-        torrent.insert(b"info".to_vec(), info);
-        BEncode::Dict(torrent)
-    }
-
     pub fn to_bencode(&self) -> BEncode {
         let mut info = BTreeMap::new();
         if let Some(ref n) = self.be_name {

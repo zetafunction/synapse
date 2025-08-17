@@ -443,8 +443,6 @@ impl Request {
                     let spb = tpb.get(sd);
                     spb.push(hash_to_id(&hash));
                     fs::remove_file(&spb).ok();
-                    spb.set_extension("torrent");
-                    fs::remove_file(&spb).ok();
                 }
 
                 for file in &files {
