@@ -150,6 +150,10 @@ impl FileCache {
         self.files.remove(path);
     }
 
+    pub fn retain<F: Fn(&path::Path) -> bool>(&mut self, f: F) {
+        self.files.retain(|k, _| f(k));
+    }
+
     pub fn flush_file(&mut self, path: &path::Path) {
         self.files.get_mut(path).map(|e| e.file.sync_all().ok());
     }

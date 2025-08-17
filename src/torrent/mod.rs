@@ -7,6 +7,7 @@ mod picker;
 use std::borrow::Cow;
 use std::collections::{BTreeMap, VecDeque};
 use std::fmt;
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
@@ -1580,11 +1581,20 @@ impl<T: cio::CIO> Torrent<T> {
     }
 
     fn set_path_skip_files(&mut self, path: String) {
-        let id = self.rpc_id();
+        let mut old_path = PathBuf::from(if let Some(p) = self.path.take() {
+            p
+        } else {
+            CONFIG.disk.directory.clone()
+        });
+        old_path.push(&self.info.name);
+        self.cio.msg_disk(disk::Request::PurgeCache {
+            tid: self.id,
+            prefix: old_path,
+        });
         self.path = Some(path.clone());
         self.cio.msg_rpc(rpc::CtlMessage::Update(vec![
             resource::SResourceUpdate::TorrentPath {
-                id,
+                id: self.rpc_id(),
                 kind: resource::ResourceKind::Torrent,
                 path,
             },

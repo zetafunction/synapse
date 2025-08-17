@@ -51,6 +51,10 @@ pub enum Request {
         hash: [u8; 20],
         extension: Option<&'static str>,
     },
+    PurgeCache {
+        tid: usize,
+        prefix: PathBuf,
+    },
     Delete {
         tid: usize,
         hash: [u8; 20],
@@ -432,6 +436,9 @@ impl Request {
                 actual.push(hash_to_id(&hash) + extension);
                 fs::rename(temp, actual)?;
             }
+            Request::PurgeCache { prefix, .. } => {
+                fc.retain(|path| !path.starts_with(&prefix));
+            }
             Request::Delete {
                 hash,
                 files,
@@ -639,6 +646,7 @@ impl Request {
             Request::Serialize { tid, .. }
             | Request::Validate { tid, .. }
             | Request::ValidatePiece { tid, .. }
+            | Request::PurgeCache { tid, .. }
             | Request::Delete { tid, .. }
             | Request::Move { tid, .. }
             | Request::Write { tid, .. } => Some(tid),
