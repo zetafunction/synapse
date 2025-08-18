@@ -7,6 +7,9 @@ use crate::util::{native, MHashMap};
 
 const PB_LEN: usize = 256;
 
+/// A simple allocation pool to reduce allocations. Currently hardcoded to hold two `PathBuf`s and
+/// one `Vec<u8>`. Use `data()` to borrow these objects; they will automatically be returned to the
+/// pool at the end of the scope.
 pub struct BufCache {
     path_a: OsString,
     path_b: OsString,
