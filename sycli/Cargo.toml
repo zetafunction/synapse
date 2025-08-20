@@ -29,3 +29,9 @@ features = [ "handshake" ]
 [dependencies.ureq]
 version = "3.0"
 default-features = false
+
+[profile.release]
+lto = "fat"
+codegen-units = 1
+opt-level = 2
+debug = true
