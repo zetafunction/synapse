@@ -1,14 +1,8 @@
-#![cfg_attr(
-    feature = "allocator",
-    feature(alloc_system, global_allocator, allocator_api)
-)]
-#[cfg(feature = "allocator")]
-extern crate alloc_system;
-#[cfg(feature = "allocator")]
-use alloc_system::System;
-#[cfg(feature = "allocator")]
+#[cfg(feature = "mimalloc")]
+use mimalloc::MiMalloc;
+#[cfg(feature = "mimalloc")]
 #[global_allocator]
-static A: System = System;
+static GLOBAL: MiMalloc = MiMalloc;
 
 #[macro_use]
 extern crate lazy_static;
