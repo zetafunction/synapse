@@ -810,22 +810,26 @@ fn search(c: &mut Client, kind: ResourceKind, criteria: Vec<Criterion>) -> Resul
 }
 
 fn get_resources(c: &mut Client, ids: Vec<String>) -> Result<Vec<Resource>> {
-    let msg = CMessage::Subscribe {
-        serial: c.next_serial(),
-        ids: ids.clone(),
-    };
-    let unsub = CMessage::Unsubscribe {
-        serial: c.next_serial(),
-        ids,
-    };
+    let mut resources = vec![];
+    for ids_chunk in ids.chunks(4096) {
+        let msg = CMessage::Subscribe {
+            serial: c.next_serial(),
+            ids: ids_chunk.to_vec(),
+        };
+        let unsub = CMessage::Unsubscribe {
+            serial: c.next_serial(),
+            ids: ids_chunk.to_vec(),
+        };
 
-    let resources = if let SMessage::UpdateResources { resources, .. } = c.rr(msg)? {
-        resources
-    } else {
-        bail!("Failed to received torrent resource list!");
-    };
-
-    c.send(unsub)?;
+        resources.extend(
+            if let SMessage::UpdateResources { resources, .. } = c.rr(msg)? {
+                resources
+            } else {
+                bail!("Failed to received torrent resource list!");
+            },
+        );
+        c.send(unsub)?;
+    }
 
     let mut results = Vec::new();
     for r in resources {
