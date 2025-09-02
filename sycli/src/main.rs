@@ -698,7 +698,7 @@ fn parse_filter(searches: &str) -> Vec<Criterion> {
     let string_searches = Regex::new(
         r#"(?x)
         # field name
-        \b(id|name|path|status|tracker|error)
+        \b(id|name|path|status|tracker|error|torrent_id)
         # delimiter
         (==|!=|::|:)
         # quoted argument
