@@ -1961,10 +1961,16 @@ impl<T: cio::CIO> Torrent<T> {
                 &self.info.hash,
                 self.info.files[idx].path.to_string_lossy().as_ref(),
             );
+            let len = self.info.files[idx].length;
+            let progress = if len != 0 {
+                done as f32 / len as f32
+            } else {
+                1.0
+            };
             updates.push(SResourceUpdate::FileProgress {
                 id,
                 kind: resource::ResourceKind::File,
-                progress: (done as f32 / self.info.files[idx].length as f32),
+                progress,
             });
         }
         self.announce_status();
