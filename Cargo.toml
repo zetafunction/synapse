@@ -87,6 +87,9 @@ opt-level = 3
 debug = true
 debug-assertions = true
 
+[profile.dev.package.sha-1]
+opt-level = 3
+
 [profile.release]
 lto = "fat"
 codegen-units = 1
