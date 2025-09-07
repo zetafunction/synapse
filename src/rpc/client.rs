@@ -140,7 +140,7 @@ impl From<Incoming> for Client {
         ];
         let data = lines.join("\r\n") + "\r\n\r\n";
         // Ignore error, it'll pop up again anyways
-        incoming.conn.write(data.as_bytes()).ok();
+        incoming.conn.write_all(data.as_bytes()).ok();
 
         let mut c = Client {
             r: Reader::new(),
@@ -214,7 +214,7 @@ impl Incoming {
             Ok(httparse::Status::Partial) => Ok(None),
             Ok(httparse::Status::Complete(idx)) => {
                 if req.method == Some("HEAD") {
-                    self.conn.write(&EMPTY_HTTP_RESP).ok();
+                    self.conn.write_all(&EMPTY_HTTP_RESP).ok();
                     return Err(io::ErrorKind::InvalidData.into());
                 }
                 match validate_upgrade(&req) {
@@ -223,7 +223,7 @@ impl Incoming {
                         return Ok(Some(IncomingStatus::Upgrade));
                     }
                     Err(true) => {
-                        self.conn.write(&UNAUTH_HTTP_RESP).ok();
+                        self.conn.write_all(&UNAUTH_HTTP_RESP).ok();
                         return Err(io::ErrorKind::InvalidData.into());
                     }
                     Err(false) => {}
@@ -237,7 +237,7 @@ impl Incoming {
                     Ok(Some(IncomingStatus::DL { id, range }))
                 } else {
                     // Ignore error, we're DCing anyways
-                    self.conn.write(&EMPTY_HTTP_RESP).ok();
+                    self.conn.write_all(&EMPTY_HTTP_RESP).ok();
                     Err(io::ErrorKind::InvalidData.into())
                 }
             }

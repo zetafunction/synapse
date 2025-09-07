@@ -491,7 +491,7 @@ impl RPC {
                     let mut conn: SStream = i.into();
                     if let Some((path, size)) = self.processor.get_dl(&id) {
                         if size == 0 {
-                            conn.write(&EMPTY_HTTP_RESP).ok();
+                            conn.write_all(&EMPTY_HTTP_RESP).ok();
                             return;
                         }
 
@@ -499,7 +499,7 @@ impl RPC {
                             Some(Ok(parsed_ranges)) => parsed_ranges,
                             Some(Err(_)) => {
                                 debug!("Ranges {} invalid, stopping DL", id);
-                                conn.write(&BAD_HTTP_RANGE).ok();
+                                conn.write_all(&BAD_HTTP_RANGE).ok();
                                 return;
                             }
                             None => vec![],
@@ -510,7 +510,7 @@ impl RPC {
                             .ok();
                     } else {
                         debug!("ID {} invalid, stopping DL", id);
-                        conn.write(&EMPTY_HTTP_RESP).ok();
+                        conn.write_all(&EMPTY_HTTP_RESP).ok();
                     }
                 }
                 Err(e) => {
