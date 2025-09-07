@@ -115,7 +115,7 @@ pub fn peer_rpc_id(torrent: &[u8; 20], peer: u64) -> String {
     ctx.update(torrent);
     ctx.update(PEER_ID);
     ctx.update(&peer.to_be_bytes());
-    hash_to_id(&ctx.finalize())
+    hash_to_id(&ctx.finalize().into())
 }
 
 pub fn file_rpc_id(torrent: &[u8; 20], file: &Path) -> String {
@@ -124,19 +124,19 @@ pub fn file_rpc_id(torrent: &[u8; 20], file: &Path) -> String {
     ctx.update(torrent);
     ctx.update(FILE_ID);
     ctx.update(file.as_os_str().as_encoded_bytes());
-    hash_to_id(&ctx.finalize())
+    hash_to_id(&ctx.finalize().into())
 }
 
-pub fn trk_rpc_id(torrent: &[u8; 20], url: &url::Url) -> String {
+pub fn trk_rpc_id(torrent: &[u8; 20], url: &Url) -> String {
     const TRK_ID: &[u8] = b"TRK";
     let mut ctx = Sha1::new();
     ctx.update(torrent);
     ctx.update(TRK_ID);
     ctx.update(url.as_str().as_bytes());
-    hash_to_id(&ctx.finalize())
+    hash_to_id(&ctx.finalize().into())
 }
 
-pub fn hash_to_id(hash: &[u8]) -> String {
+pub fn hash_to_id(hash: &[u8; 20]) -> String {
     let mut hash_str = String::with_capacity(hash.len() * 2);
     for i in hash {
         write!(&mut hash_str, "{i:02X}").unwrap();

@@ -518,8 +518,8 @@ impl<T: cio::CIO> Peer<T> {
                 .msg_rpc(rpc::CtlMessage::Extant(vec![resource::Resource::Peer(
                     resource::Peer {
                         id,
-                        torrent_id: util::hash_to_id(&self.t_hash[..]),
-                        client_id: util::hash_to_id(&cid[..]),
+                        torrent_id: util::hash_to_id(&self.t_hash),
+                        client_id: util::hash_to_id(&cid),
                         ip: self.addr.to_string(),
                         rate_up: 0,
                         rate_down: 0,

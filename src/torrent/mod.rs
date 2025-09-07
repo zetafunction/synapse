@@ -553,7 +553,7 @@ impl<T: cio::CIO> Torrent<T> {
     }
 
     pub fn rpc_id(&self) -> String {
-        util::hash_to_id(&self.info.hash[..])
+        util::hash_to_id(&self.info.hash)
     }
 
     pub fn delete(&mut self, artifacts: bool) {
@@ -2138,7 +2138,7 @@ impl<T: cio::CIO> fmt::Debug for Torrent<T> {
 
 impl<T: cio::CIO> fmt::Display for Torrent<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Torrent {}", util::hash_to_id(&self.info.hash[..]))
+        write!(f, "Torrent {}", util::hash_to_id(&self.info.hash))
     }
 }
 
