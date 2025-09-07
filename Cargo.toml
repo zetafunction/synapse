@@ -57,6 +57,7 @@ percent-encoding = "2.3"
 thiserror = "2.0.12"
 blake3 = "1.8.2"
 mimalloc = { version = "0.1.48", optional = true }
+compio = { version = "0.16.0", features = ["rustls", "macros"] }
 
 [dependencies.ip_network]
 version = "0.4.1"

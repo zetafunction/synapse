@@ -83,7 +83,8 @@ lazy_static! {
     };
 }
 
-fn main() {
+#[compio::main]
+async fn main() {
     let args = args::args();
     match init::init(args) {
         Ok(()) => {}
