@@ -1442,7 +1442,7 @@ impl<T: cio::CIO> Torrent<T> {
 
     pub fn rpc_update_file(&mut self, id: String, priority: u8) {
         for (i, f) in self.info.files.iter().enumerate() {
-            let fid = util::file_rpc_id(&self.info.hash, &f.path.as_path());
+            let fid = util::file_rpc_id(&self.info.hash, f.path.as_path());
             if fid == id {
                 Arc::make_mut(&mut self.priorities)[i] = priority;
             }

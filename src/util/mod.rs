@@ -114,7 +114,7 @@ pub fn peer_rpc_id(torrent: &[u8; 20], peer: u64) -> String {
     let mut ctx = Sha1::new();
     ctx.update(torrent);
     ctx.update(PEER_ID);
-    ctx.update(&peer.to_be_bytes());
+    ctx.update(peer.to_be_bytes());
     hash_to_id(&ctx.finalize().into())
 }
 
