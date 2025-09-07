@@ -681,7 +681,7 @@ impl<T: cio::CIO> Torrent<T> {
     }
 
     pub fn add_tracker(&mut self, url: Url) -> String {
-        let id = util::trk_rpc_id(&self.info.hash, url.as_str());
+        let id = util::trk_rpc_id(&self.info.hash, &url);
         self.trackers.push_front(Tracker {
             status: TrackerStatus::Updating,
             update: None,
@@ -708,7 +708,7 @@ impl<T: cio::CIO> Torrent<T> {
         let ih = &self.info.hash;
         let mut res = None;
         for (idx, tracker) in self.trackers.iter().enumerate() {
-            if util::trk_rpc_id(ih, tracker.url.as_str()) == rpc_id {
+            if util::trk_rpc_id(ih, &tracker.url) == rpc_id {
                 res = Some(idx);
                 self.cio
                     .msg_rpc(rpc::CtlMessage::Removed(vec![rpc_id.to_owned()]));
@@ -725,7 +725,7 @@ impl<T: cio::CIO> Torrent<T> {
         if let Some(req) = self
             .trackers
             .iter()
-            .find(|trk| util::trk_rpc_id(&self.info.hash, trk.url.as_str()) == rpc_id)
+            .find(|trk| util::trk_rpc_id(&self.info.hash, &trk.url) == rpc_id)
             .and_then(|trk| tracker::Request::custom(self, trk.url.clone()))
         {
             self.cio.msg_trk(req)
@@ -1442,8 +1442,7 @@ impl<T: cio::CIO> Torrent<T> {
 
     pub fn rpc_update_file(&mut self, id: String, priority: u8) {
         for (i, f) in self.info.files.iter().enumerate() {
-            let fid =
-                util::file_rpc_id(&self.info.hash, f.path.as_path().to_string_lossy().as_ref());
+            let fid = util::file_rpc_id(&self.info.hash, &f.path.as_path());
             if fid == id {
                 Arc::make_mut(&mut self.priorities)[i] = priority;
             }
@@ -1681,10 +1680,7 @@ impl<T: cio::CIO> Torrent<T> {
         }
 
         for (i, (done, total)) in files.into_iter().enumerate() {
-            let id = util::file_rpc_id(
-                &self.info.hash,
-                self.info.files[i].path.to_string_lossy().as_ref(),
-            );
+            let id = util::file_rpc_id(&self.info.hash, &self.info.files[i].path);
             let progress = if self.priorities[i] != 0 {
                 done as f32 / total as f32
             } else {
@@ -1715,7 +1711,7 @@ impl<T: cio::CIO> Torrent<T> {
                 }
                 seen_urls.insert(trk.url.as_str());
                 Some(resource::Resource::Tracker(resource::Tracker {
-                    id: util::trk_rpc_id(&self.info.hash, trk.url.as_str()),
+                    id: util::trk_rpc_id(&self.info.hash, &trk.url),
                     torrent_id: self.rpc_id(),
                     url: trk.url.as_ref().clone(),
                     last_report: trk.last_announce,
@@ -1730,8 +1726,7 @@ impl<T: cio::CIO> Torrent<T> {
         let mut r = Vec::new();
         r.push(self.rpc_id());
         for f in &self.info.files {
-            let id =
-                util::file_rpc_id(&self.info.hash, f.path.as_path().to_string_lossy().as_ref());
+            let id = util::file_rpc_id(&self.info.hash, f.path.as_path());
             r.push(id)
         }
         let mut seen_urls = FHashSet::default();
@@ -1740,7 +1735,7 @@ impl<T: cio::CIO> Torrent<T> {
                 continue;
             }
             seen_urls.insert(tracker.url.as_str());
-            r.push(util::trk_rpc_id(&self.info.hash, tracker.url.as_str()));
+            r.push(util::trk_rpc_id(&self.info.hash, &tracker.url));
         }
         self.cio.msg_rpc(rpc::CtlMessage::Removed(r));
     }
@@ -1912,7 +1907,7 @@ impl<T: cio::CIO> Torrent<T> {
             .trackers
             .iter()
             .map(|tracker| {
-                let id = util::trk_rpc_id(&self.info.hash, tracker.url.as_str());
+                let id = util::trk_rpc_id(&self.info.hash, &tracker.url);
                 let error = match tracker.status {
                     TrackerStatus::Failure(ref r) => Some(r.clone()),
                     _ => None,
@@ -1957,10 +1952,7 @@ impl<T: cio::CIO> Torrent<T> {
         }
 
         for (idx, done) in self.files.flush() {
-            let id = util::file_rpc_id(
-                &self.info.hash,
-                self.info.files[idx].path.to_string_lossy().as_ref(),
-            );
+            let id = util::file_rpc_id(&self.info.hash, &self.info.files[idx].path);
             let len = self.info.files[idx].length;
             let progress = if len != 0 {
                 done as f32 / len as f32
