@@ -470,10 +470,10 @@ impl Response {
                     let mut values = Vec::new();
                     if let Some(addrs) = r.remove(b"values".as_ref()).and_then(|b| b.into_list()) {
                         for addr in addrs {
-                            if let Some(data) = addr.into_bytes() {
-                                if data.len() == 6 {
-                                    values.push(bytes_to_addr(&data));
-                                }
+                            if let Some(data) = addr.into_bytes()
+                                && data.len() == 6
+                            {
+                                values.push(bytes_to_addr(&data));
                             }
                         }
                     }

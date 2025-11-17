@@ -402,11 +402,11 @@ impl<T: cio::CIO> Control<T> {
 
         if let Some(&tid) = p.get(&pid) {
             let t = &mut self.torrents;
-            if let Some(torrent) = t.get_mut(&tid) {
-                if torrent.peer_ev(pid, ev).is_err() {
-                    p.remove(&pid);
-                    torrent.update_rpc_peers();
-                }
+            if let Some(torrent) = t.get_mut(&tid)
+                && torrent.peer_ev(pid, ev).is_err()
+            {
+                p.remove(&pid);
+                torrent.update_rpc_peers();
             }
         } else if self.incoming.remove(&pid) && self.inc_handshake(pid, ev).is_err() {
             self.cio.remove_peer(pid);
@@ -695,11 +695,11 @@ impl<T: cio::CIO> Control<T> {
 
     fn add_peer_rpc(&mut self, id: usize, peer: peer::PeerConn) -> Option<String> {
         trace!("Adding peer to torrent {:?}!", id);
-        if let Some(torrent) = self.torrents.get_mut(&id) {
-            if let Some(pid) = torrent.add_peer(peer) {
-                self.peers.insert(pid, id);
-                return Some(util::peer_rpc_id(&torrent.info().hash, pid as u64));
-            }
+        if let Some(torrent) = self.torrents.get_mut(&id)
+            && let Some(pid) = torrent.add_peer(peer)
+        {
+            self.peers.insert(pid, id);
+            return Some(util::peer_rpc_id(&torrent.info().hash, pid as u64));
         }
         None
     }

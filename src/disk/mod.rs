@@ -117,10 +117,11 @@ impl Disk {
                     }
                 }
             }
-            if done && seq {
-                if let Some(r) = self.sequential.pop_front() {
-                    self.active.push_back(r);
-                }
+            if done
+                && seq
+                && let Some(r) = self.sequential.pop_front()
+            {
+                self.active.push_back(r);
             }
             match self.poll.wait(0) {
                 Ok(_) => {
@@ -145,10 +146,10 @@ impl Disk {
                 }
                 Ok(mut r) => {
                     let tid = r.tid();
-                    if let Err(e) = r.setup() {
-                        if let Some(t) = tid {
-                            self.ch.send(Response::error(t, e)).ok();
-                        }
+                    if let Err(e) = r.setup()
+                        && let Some(t) = tid
+                    {
+                        self.ch.send(Response::error(t, e)).ok();
                     }
                     self.enqueue_req(r);
                 }

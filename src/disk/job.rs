@@ -458,10 +458,8 @@ impl Request {
                     let pb = tpb2.get(path.as_ref().unwrap_or(dd));
                     pb.push(file);
                     fc.remove_file(pb);
-                    if artifacts {
-                        if let Err(e) = fs::remove_file(&pb) {
-                            debug!("Failed to delete file: {:?}, {}", pb, e);
-                        }
+                    if artifacts && let Err(e) = fs::remove_file(&pb) {
+                        debug!("Failed to delete file: {:?}, {}", pb, e);
                     }
                 }
 
@@ -569,7 +567,7 @@ impl Request {
                                 if e.kind() == io::ErrorKind::WouldBlock
                                     || e.kind() == io::ErrorKind::TimedOut =>
                             {
-                                break 'outer
+                                break 'outer;
                             }
                             Err(e) => return Err(e),
                         }

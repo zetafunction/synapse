@@ -135,10 +135,10 @@ impl Picker {
         }
 
         let piece = peer.piece_cache().last();
-        if let Some(p) = piece {
-            if (self.piece_idx[*p as usize].availability % 2) == 0 {
-                self.inc_pri(*p);
-            }
+        if let Some(p) = piece
+            && self.piece_idx[*p as usize].availability.is_multiple_of(2)
+        {
+            self.inc_pri(*p);
         }
         piece.cloned()
     }

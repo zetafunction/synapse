@@ -176,14 +176,14 @@ impl FileCache {
                         alloc_failed,
                         sparse,
                     } => {
-                        if let RequestedSize::WithFallocate(size) = requested_size {
-                            if *sparse && !*alloc_failed {
-                                let file =
-                                    fs::OpenOptions::new().write(true).read(true).open(path)?;
-                                *alloc_failed = !native::fallocate(&file, *size)?;
-                                if !*alloc_failed {
-                                    *sparse = false;
-                                }
+                        if let RequestedSize::WithFallocate(size) = requested_size
+                            && *sparse
+                            && !*alloc_failed
+                        {
+                            let file = fs::OpenOptions::new().write(true).read(true).open(path)?;
+                            *alloc_failed = !native::fallocate(&file, *size)?;
+                            if !*alloc_failed {
+                                *sparse = false;
                             }
                         }
                         return Ok(());

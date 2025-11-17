@@ -181,7 +181,7 @@ pub struct RPC {
     disk: amy::Sender<disk::Request>,
 }
 
-fn load_certs(filename: &str) -> io::Result<Vec<CertificateDer>> {
+fn load_certs(filename: &str) -> io::Result<Vec<CertificateDer<'_>>> {
     let certs = CertificateDer::pem_file_iter(filename)
         .map_err(io::Error::other)?
         .collect::<result::Result<Vec<_>, _>>()
@@ -189,7 +189,7 @@ fn load_certs(filename: &str) -> io::Result<Vec<CertificateDer>> {
     Ok(certs)
 }
 
-fn load_private_key(filename: &str) -> io::Result<PrivateKeyDer> {
+fn load_private_key(filename: &str) -> io::Result<PrivateKeyDer<'_>> {
     let keys = PrivateKeyDer::pem_file_iter(filename)
         .map_err(io::Error::other)?
         .collect::<result::Result<Vec<_>, _>>()

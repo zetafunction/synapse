@@ -389,16 +389,16 @@ impl<T: cio::CIO> Torrent<T> {
             })
             .collect();
 
-        if trackers.is_empty() {
-            if let Some(ref announce) = info.announce {
-                let tracker = Tracker {
-                    status: TrackerStatus::Updating,
-                    update: None,
-                    last_announce: Utc::now(),
-                    url: announce.clone(),
-                };
-                trackers.push_back(tracker);
-            }
+        if trackers.is_empty()
+            && let Some(ref announce) = info.announce
+        {
+            let tracker = Tracker {
+                status: TrackerStatus::Updating,
+                update: None,
+                last_announce: Utc::now(),
+                url: announce.clone(),
+            };
+            trackers.push_back(tracker);
         }
 
         let files = Files::new(&info, &pieces);
@@ -634,11 +634,12 @@ impl<T: cio::CIO> Torrent<T> {
             }
         }
 
-        if (resp.is_err() || empty) && self.trackers.iter().any(|t| &*t.url == url) {
-            if let Some(front) = self.trackers.pop_front() {
-                self.trackers.push_back(front);
-                self.try_update_tracker();
-            }
+        if (resp.is_err() || empty)
+            && self.trackers.iter().any(|t| &*t.url == url)
+            && let Some(front) = self.trackers.pop_front()
+        {
+            self.trackers.push_back(front);
+            self.try_update_tracker();
         }
         self.update_rpc_tracker();
     }
@@ -796,10 +797,10 @@ impl<T: cio::CIO> Torrent<T> {
                     // Tell all relevant peers we got the piece
                     let m = Message::Have(piece);
                     for pid in &self.leechers {
-                        if let Some(peer) = self.peers.get_mut(pid) {
-                            if !peer.pieces().has_bit(u64::from(piece)) {
-                                peer.send_message(m.clone());
-                            }
+                        if let Some(peer) = self.peers.get_mut(pid)
+                            && !peer.pieces().has_bit(u64::from(piece))
+                        {
+                            peer.send_message(m.clone());
                         }
                     }
                     self.files.update(&self.info, piece);
@@ -1135,11 +1136,11 @@ impl<T: cio::CIO> Torrent<T> {
                 if length != self.info.block_len(index, begin) {
                     return Err(());
                 }
-                if !self.status.stopped() {
-                    if let Some(buf) = Buffer::get() {
-                        self.request_read(peer.id(), index, begin, buf);
-                        return Ok(());
-                    }
+                if !self.status.stopped()
+                    && let Some(buf) = Buffer::get()
+                {
+                    self.request_read(peer.id(), index, begin, buf);
+                    return Ok(());
                 }
 
                 // TODO: add this to a queue to fulfill later
@@ -1279,7 +1280,7 @@ impl<T: cio::CIO> Torrent<T> {
                             };
                             // To be safe, we should ensure that the new total_size matches the number of index pieces.
                             // Otherwise we may request the wrong number of pieces.
-                            let implied_last_info_idx = if total_size % 16_384 == 0 {
+                            let implied_last_info_idx = if total_size.is_multiple_of(16_384) {
                                 total_size / 16_384 - 1
                             } else {
                                 total_size / 16_384
@@ -1848,23 +1849,23 @@ impl<T: cio::CIO> Torrent<T> {
         if self.peers.values().any(|p| p.addr() == conn.sock().addr()) {
             return None;
         }
-        if let Ok(pid) = self.cio.add_peer(conn) {
-            if let Ok(p) = Peer::new(pid, self, None, None) {
-                if self.info_idx.is_none() {
-                    self.picker.add_peer(&p);
-                }
-                self.peers.insert(pid, p);
-                return Some(pid);
+        if let Ok(pid) = self.cio.add_peer(conn)
+            && let Ok(p) = Peer::new(pid, self, None, None)
+        {
+            if self.info_idx.is_none() {
+                self.picker.add_peer(&p);
             }
+            self.peers.insert(pid, p);
+            return Some(pid);
         }
         None
     }
 
     pub fn add_inc_peer(&mut self, pid: usize, id: [u8; 20], rsv: [u8; 8]) -> Option<usize> {
-        if let Some(addr) = self.cio.get_peer(pid, |pconn| pconn.sock().addr()) {
-            if self.peers.values().any(|p| p.addr() == addr) {
-                return None;
-            }
+        if let Some(addr) = self.cio.get_peer(pid, |pconn| pconn.sock().addr())
+            && self.peers.values().any(|p| p.addr() == addr)
+        {
+            return None;
         }
         if let Ok(p) = Peer::new(pid, self, Some(id), Some(rsv)) {
             debug!("{:?}: Adding peer {:?}!", self.rpc_id(), pid);
@@ -2148,10 +2149,10 @@ impl<T: cio::CIO> Drop for Torrent<T> {
             trace!("Removing peer {:?}", peer);
             self.leechers.remove(&id);
         }
-        if !self.status.paused {
-            if let Some(msg) = tracker::Request::stopped(self) {
-                self.cio.msg_trk(msg);
-            }
+        if !self.status.paused
+            && let Some(msg) = tracker::Request::stopped(self)
+        {
+            self.cio.msg_trk(msg);
         }
         self.send_rpc_removal();
     }

@@ -83,7 +83,7 @@ impl Picker {
         let picker = rarest::Picker::new(pieces);
         let last_piece = info.pieces().saturating_sub(1);
         let lpl = info.piece_len(last_piece);
-        let last_piece_scale = if lpl % 16_384 == 0 {
+        let last_piece_scale = if lpl.is_multiple_of(16_384) {
             lpl / 16_384
         } else {
             lpl / 16_384 + 1

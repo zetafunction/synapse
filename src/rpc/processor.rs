@@ -631,10 +631,10 @@ impl Processor {
 
                     if let Resource::Tracker(t) = &r {
                         // Note we don't have to send a client update here: see above
-                        if let Some(host) = t.url.host_str() {
-                            if let Some(r) = self.resources.get_mut(&t.torrent_id) {
-                                r.as_torrent_mut().tracker_urls.retain(|url| url != host)
-                            }
+                        if let Some(host) = t.url.host_str()
+                            && let Some(r) = self.resources.get_mut(&t.torrent_id)
+                        {
+                            r.as_torrent_mut().tracker_urls.retain(|url| url != host)
                         }
                     }
                 }
