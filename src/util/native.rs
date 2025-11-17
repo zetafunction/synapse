@@ -19,7 +19,7 @@ pub fn fallocate(f: &File, len: u64) -> io::Result<bool> {
         match rustix::fs::fallocate(f, rustix::fs::FallocateFlags::empty(), 0, len) {
             Ok(_) => return Ok(true),
             Err(Errno::NOSYS) | Err(Errno::OPNOTSUPP) => {
-                f.set_len(len as u64)?;
+                f.set_len(len)?;
                 return Ok(false);
             }
             Err(Errno::INTR) => continue,

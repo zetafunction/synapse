@@ -53,6 +53,8 @@ thiserror = "2.0.12"
 blake3 = "1.8.2"
 mimalloc = { version = "0.1.48", optional = true }
 rustix = { version = "1.1.2", features = ["fs"] }
+compio = "0.16.1"
+futures = "0.3.31"
 
 [dependencies.ip_network]
 version = "0.4.1"
