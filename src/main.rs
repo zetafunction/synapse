@@ -35,6 +35,7 @@ mod stat;
 mod throttle;
 mod torrent;
 mod tracker;
+mod worker;
 
 use ip_network_table::IpNetworkTable;
 use rand::seq::IndexedRandom;
