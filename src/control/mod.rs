@@ -50,7 +50,7 @@ pub struct Control<T: cio::CIO> {
     incoming: UHashSet,
     hash_idx: MHashMap<[u8; 20], usize>,
     data: ServerData,
-    db: amy::Sender<disk::Request>,
+    db: flume::Sender<disk::Request>,
 }
 
 #[derive(Serialize, Deserialize, Default)]
@@ -94,7 +94,7 @@ impl<T: cio::CIO> Control<T> {
         config: Arc<Config>,
         mut cio: T,
         throttler: Throttler,
-        db: amy::Sender<disk::Request>,
+        db: flume::Sender<disk::Request>,
     ) -> io::Result<Control<T>> {
         let torrents = UHashMap::default();
         let peers = UHashMap::default();

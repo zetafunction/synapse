@@ -13,7 +13,7 @@ use std::{fs, io, thread};
 use self::cache::{BufCache, FileCache};
 use self::job::JobRes;
 use crate::config::Config;
-use crate::handle;
+use crate::worker;
 
 #[cfg(test)]
 mod tests;
@@ -23,9 +23,8 @@ const JOB_TIME_SLICE: u64 = 150;
 
 pub struct Disk {
     config: Arc<Config>,
-    poll: amy::Poller,
-    ch: handle::Handle<Request, Response>,
-    jobs: amy::Receiver<Request>,
+    worker: worker::Worker<Request, Response>,
+    jobs_rx: flume::Receiver<Request>,
     files: FileCache,
     active: VecDeque<Request>,
     sequential: VecDeque<Request>,
@@ -35,14 +34,12 @@ pub struct Disk {
 impl Disk {
     pub fn new(
         config: Arc<Config>,
-        poll: amy::Poller,
-        ch: handle::Handle<Request, Response>,
-        jobs: amy::Receiver<Request>,
+        worker: worker::Worker<Request, Response>,
+        jobs_rx: flume::Receiver<Request>,
     ) -> Disk {
         Disk {
-            poll,
-            ch,
-            jobs,
+            worker,
+            jobs_rx,
             files: FileCache::new(config.net.max_open_files),
             bufs: BufCache::new(),
             active: VecDeque::new(),
@@ -51,11 +48,14 @@ impl Disk {
         }
     }
 
-    pub fn run(&mut self) {
+    pub async fn run(&mut self) {
         let sd = &self.config.disk.session;
         fs::create_dir_all(sd).unwrap();
 
-        loop {
+        loop {}
+        /*
+
+        while let Some(request) =  self.worker.rx.next() {
             match self.poll.wait(POLL_INT_MS) {
                 Ok(_) => {
                     if self.handle_events() {
@@ -70,6 +70,7 @@ impl Disk {
                 break;
             }
         }
+        */
 
         // Try to finish up remaining jobs
         for job in self.active.drain(..) {
@@ -97,10 +98,10 @@ impl Disk {
             match j.execute(&self.config.disk, &mut self.files, &mut self.bufs) {
                 Ok(JobRes::Resp(r)) => {
                     done = true;
-                    self.ch.send(r).ok();
+                    self.worker.tx.send(r).ok();
                 }
                 Ok(JobRes::Update(s, r)) => {
-                    self.ch.send(r).ok();
+                    self.worker.tx.send(r).ok();
                     if rotate % 3 == 0 {
                         self.active.push_back(s);
                     } else {
@@ -120,7 +121,7 @@ impl Disk {
                 Err(e) => {
                     done = true;
                     if let Some(t) = tid {
-                        self.ch.send(Response::error(t, e)).ok();
+                        self.worker.tx.send(Response::error(t, e)).ok();
                     } else {
                         error!("Disk job failed: {}", e);
                     }
@@ -158,7 +159,7 @@ impl Disk {
                     if let Err(e) = r.setup()
                         && let Some(t) = tid
                     {
-                        self.ch.send(Response::error(t, e)).ok();
+                        self.tx.send(Response::error(t, e)).ok();
                     }
                     self.enqueue_req(r);
                 }
@@ -179,14 +180,14 @@ pub fn start(
     config: Arc<Config>,
     creg: &mut amy::Registrar,
 ) -> io::Result<(
-    handle::Handle<Response, Request>,
-    amy::Sender<Request>,
+    worker::WorkerHandle<Request, Response>,
+    flume::Sender<Request>,
     thread::JoinHandle<()>,
 )> {
-    let poll = amy::Poller::new()?;
-    let mut reg = poll.get_registrar();
-    let (ch, dh) = handle::Handle::new(creg, &mut reg)?;
-    let (tx, rx) = reg.channel()?;
-    let h = dh.run("disk", move |h| Disk::new(config, poll, h, rx).run())?;
-    Ok((ch, tx, h))
+    let (worker_handle, worker) = worker::Worker::new(creg)?;
+    let (jobs_tx, jobs_rx) = flume::unbounded::<Request>();
+    let h = worker.run("disk", async move |worker| {
+        Disk::new(config, worker, jobs_rx).run().await
+    })?;
+    Ok((worker_handle, jobs_tx, h))
 }

@@ -4,7 +4,6 @@ use std::{io, thread};
 pub struct Handle<I, O> {
     pub tx: amy::Sender<O>,
     pub rx: amy::Receiver<I>,
-    pub reg: amy::Registrar,
 }
 
 impl<I: Debug + Send + 'static, O: Debug + Send + 'static> Handle<I, O> {
@@ -14,16 +13,8 @@ impl<I: Debug + Send + 'static, O: Debug + Send + 'static> Handle<I, O> {
     ) -> io::Result<(Handle<I, O>, Handle<O, I>)> {
         let (htx, crx) = hreg.channel::<O>()?;
         let (ctx, hrx) = creg.channel::<I>()?;
-        let ch = Handle {
-            tx: htx,
-            rx: hrx,
-            reg: creg.clone(),
-        };
-        let hh = Handle {
-            tx: ctx,
-            rx: crx,
-            reg: hreg.clone(),
-        };
+        let ch = Handle { tx: htx, rx: hrx };
+        let hh = Handle { tx: ctx, rx: crx };
         Ok((ch, hh))
     }
 

@@ -37,7 +37,7 @@ pub struct Processor {
     // Index by torrent ID
     torrent_idx: SHashMap<MHashSet<String>>,
     tokens: SHashMap<BearerToken>,
-    db: amy::Sender<disk::Request>,
+    db: flume::Sender<disk::Request>,
     user_data: SHashMap<json::Value>,
 }
 
@@ -70,7 +70,7 @@ pub enum TransferKind {
 const EXPIRATION_DUR: i64 = 120;
 
 impl Processor {
-    pub fn new(config: Arc<Config>, db: amy::Sender<disk::Request>) -> Processor {
+    pub fn new(config: Arc<Config>, db: flume::Sender<disk::Request>) -> Processor {
         let p = Path::new(&config.disk.session).join(USER_DATA_FILE);
         let mut data = Vec::new();
 

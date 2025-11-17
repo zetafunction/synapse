@@ -30,14 +30,14 @@ pub struct Manager {
     dht_flush: time::Instant,
     sock: UdpSocket,
     buf: Vec<u8>,
-    db: amy::Sender<disk::Request>,
+    db: flume::Sender<disk::Request>,
 }
 
 impl Manager {
     pub fn new(
         config: Arc<Config>,
         reg: &amy::Registrar,
-        db: amy::Sender<disk::Request>,
+        db: flume::Sender<disk::Request>,
     ) -> io::Result<Manager> {
         let sock = UdpSocket::bind(("0.0.0.0", config.dht.port))?;
         sock.set_nonblocking(true)?;

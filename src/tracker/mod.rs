@@ -96,7 +96,7 @@ impl Tracker {
     pub fn start(
         config: Arc<Config>,
         creg: &mut amy::Registrar,
-        db: amy::Sender<disk::Request>,
+        db: flume::Sender<disk::Request>,
     ) -> io::Result<(handle::Handle<Response, Request>, thread::JoinHandle<()>)> {
         let poll = amy::Poller::new()?;
         let mut reg = poll.get_registrar();

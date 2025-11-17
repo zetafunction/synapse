@@ -179,7 +179,7 @@ pub struct RPC {
     transfers: Transfers,
     clients: UHashMap<Client>,
     incoming: UHashMap<Incoming>,
-    disk: amy::Sender<disk::Request>,
+    disk: flume::Sender<disk::Request>,
 }
 
 fn load_certs<'a>(filename: &str) -> io::Result<Vec<CertificateDer<'a>>> {
@@ -216,7 +216,7 @@ impl RPC {
     pub fn start(
         config: Arc<Config>,
         creg: &mut amy::Registrar,
-        db: amy::Sender<disk::Request>,
+        db: flume::Sender<disk::Request>,
     ) -> io::Result<(handle::Handle<Message, CtlMessage>, thread::JoinHandle<()>)> {
         let poll = amy::Poller::new()?;
         let mut reg = poll.get_registrar();

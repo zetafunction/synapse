@@ -35,6 +35,7 @@ mod stat;
 mod throttle;
 mod torrent;
 mod tracker;
+mod worker;
 
 use rand::seq::IndexedRandom;
 use std::process;

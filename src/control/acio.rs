@@ -23,7 +23,7 @@ pub struct ACIO {
 }
 
 pub struct ACChans {
-    pub disk_tx: amy::Sender<disk::Request>,
+    pub disk_tx: flume::Sender<disk::Request>,
     pub disk_rx: amy::Receiver<disk::Response>,
 
     pub rpc_tx: amy::Sender<rpc::CtlMessage>,
@@ -124,8 +124,7 @@ impl ACIO {
             // Liveness checks
             match d.chans.disk_tx.send(disk::Request::Ping) {
                 Ok(_) => {}
-                Err(ChannelError::SendError(_)) => d.crashed = true,
-                Err(e) => error!("Unknown error sending to channel: {:?}", e),
+                Err(flume::SendError(_)) => d.crashed = true,
             }
             match d.chans.rpc_tx.send(rpc::CtlMessage::Ping) {
                 Ok(_) => {}
