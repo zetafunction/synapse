@@ -1,7 +1,7 @@
 use std::io::{self, Write};
 use std::{mem, result, str, time};
 
-use base64::prelude::{Engine, BASE64_STANDARD};
+use base64::prelude::{BASE64_STANDARD, Engine};
 use sstream::SStream;
 use url::Url;
 
@@ -9,9 +9,9 @@ use super::proto::message::{SMessage, Version};
 use super::proto::ws::{Frame, Message, Opcode};
 use super::reader::Reader;
 use super::writer::Writer;
-use super::{Error, Result};
 use super::{EMPTY_HTTP_RESP, UNAUTH_HTTP_RESP};
-use crate::util::{aread, sha1_hash, IOR};
+use super::{Error, Result};
+use crate::util::{IOR, aread, sha1_hash};
 use crate::{CONFIG, DL_TOKEN};
 
 pub struct Client {

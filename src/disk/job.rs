@@ -9,10 +9,10 @@ use sstream::SStream;
 
 use super::cache::RequestedSize;
 use super::{BufCache, FileCache, JOB_TIME_SLICE};
+use crate::CONFIG;
 use crate::buffers::Buffer;
 use crate::torrent::{Info, LocIter};
 use crate::util::{hash_to_id, io_err};
-use crate::CONFIG;
 
 static MP_BOUNDARY: &str = "qxyllcqgNchqyob";
 const EXDEV: i32 = 18;

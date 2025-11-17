@@ -1,8 +1,8 @@
 use super::{Block, Picker};
 use crate::control;
 use crate::torrent::{Bitfield, Info, Peer as TGPeer};
-use rand::seq::IteratorRandom;
 use rand::Rng;
+use rand::seq::IteratorRandom;
 use std::cell::RefCell;
 use std::collections::HashMap;
 
@@ -19,8 +19,8 @@ impl Simulation {
         let mut rng = rand::rng();
         let mut peers = Vec::new();
         for i in 0..cfg.peers {
-            let connected = (0..cfg.peers as usize)
-                .choose_multiple(&mut rng, cfg.connect_limit as usize);
+            let connected =
+                (0..cfg.peers as usize).choose_multiple(&mut rng, cfg.connect_limit as usize);
             let unchoked = connected
                 .iter()
                 .map(|v| *v)
@@ -141,11 +141,7 @@ impl Simulation {
             .filter(|p| !p.data.pieces().complete())
             .map(|p| p.data.id())
             .collect::<Vec<_>>();
-        if inc.is_empty() {
-            Ok(())
-        } else {
-            Err(())
-        }
+        if inc.is_empty() { Ok(()) } else { Err(()) }
     }
 }
 

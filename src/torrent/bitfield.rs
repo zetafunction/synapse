@@ -1,6 +1,6 @@
 use std::fmt;
 
-use base64::prelude::{Engine, BASE64_STANDARD};
+use base64::prelude::{BASE64_STANDARD, Engine};
 
 use crate::protocol;
 
@@ -302,8 +302,8 @@ impl Iterator for BitfieldIter<'_> {
 
 #[cfg(test)]
 mod tests {
-    use super::protocol;
     use super::Bitfield;
+    use super::protocol;
 
     #[test]
     fn test_count() {

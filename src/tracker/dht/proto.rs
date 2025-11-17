@@ -1,7 +1,7 @@
 use super::{ID, VERSION};
+use crate::CONFIG;
 use crate::bencode::{self, BEncode};
 use crate::util::{addr_to_bytes, bytes_to_addr};
-use crate::CONFIG;
 use num_bigint::BigUint;
 use std::collections::BTreeMap;
 use std::net::SocketAddr;

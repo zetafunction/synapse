@@ -11,9 +11,9 @@ use url::Url;
 
 use self::reader::{ReadRes, Reader};
 use self::writer::Writer;
-use crate::tracker::{self, dns, Announce, Error, Response, Result, TrackerResponse};
-use crate::util::{http, UHashMap};
-use crate::{bencode, PEER_ID};
+use crate::tracker::{self, Announce, Error, Response, Result, TrackerResponse, dns};
+use crate::util::{UHashMap, http};
+use crate::{PEER_ID, bencode};
 
 const TIMEOUT_MS: u64 = 5_000;
 
@@ -363,10 +363,10 @@ impl Handler {
             .header("Host", host)
             .encode(&mut http_req);
 
-        let port =
-            req.url
-                .port()
-                .unwrap_or_else(|| if req.url.scheme() == "https" { 443 } else { 80 });
+        let port = req
+            .url
+            .port()
+            .unwrap_or_else(|| if req.url.scheme() == "https" { 443 } else { 80 });
 
         let ohost = if req.url.scheme() == "https" {
             Some(host.to_owned())

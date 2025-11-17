@@ -3,10 +3,10 @@ use std::time;
 
 use sstream::SStream;
 
-use super::proto::message::Error;
 use super::EMPTY_HTTP_RESP;
+use super::proto::message::Error;
 
-use crate::util::{aread, UHashMap, IOR};
+use crate::util::{IOR, UHashMap, aread};
 
 pub struct Transfers {
     torrents: UHashMap<TorrentTx>,

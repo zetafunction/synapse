@@ -2,7 +2,7 @@ use std::io;
 use std::mem;
 
 use crate::tracker::errors::{Error, Result};
-use crate::util::{aread, IOR};
+use crate::util::{IOR, aread};
 
 pub struct Reader {
     data: Vec<u8>,

@@ -1,5 +1,5 @@
 use super::proto::ws::Message;
-use crate::util::{awrite, IOR};
+use crate::util::{IOR, awrite};
 use std::collections::VecDeque;
 use std::io;
 

@@ -60,7 +60,7 @@ pub trait CIO {
 
     /// Applies f to a peer if it exists
     fn get_peer<T, F: FnOnce(&mut torrent::PeerConn) -> T>(&mut self, peer: PID, f: F)
-        -> Option<T>;
+    -> Option<T>;
 
     /// Removes a peer - This will trigger an error being
     /// reported at the next poll time, clients should wait
@@ -91,7 +91,7 @@ pub trait CIO {
 
 #[cfg(test)]
 pub mod test {
-    use super::{Event, Result, CIO, PID, TID};
+    use super::{CIO, Event, PID, Result, TID};
     use crate::{disk, rpc, torrent, tracker};
     use std::collections::HashMap;
     use std::sync::{Arc, Mutex};

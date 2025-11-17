@@ -5,8 +5,8 @@ use std::time;
 use byteorder::{BigEndian, ByteOrder, ReadBytesExt, WriteBytesExt};
 use rand::random;
 
-use crate::tracker::{dns, Announce, Error, Event, Response, Result, TrackerResponse};
-use crate::util::{bytes_to_addr, FHashMap, UHashMap};
+use crate::tracker::{Announce, Error, Event, Response, Result, TrackerResponse, dns};
+use crate::util::{FHashMap, UHashMap, bytes_to_addr};
 use crate::{CONFIG, PEER_ID};
 
 // We're not going to bother with backoff, if the tracker/network aren't working now

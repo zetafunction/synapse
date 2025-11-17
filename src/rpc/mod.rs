@@ -12,7 +12,7 @@ use std::sync::Arc;
 use std::{io, result, str, thread};
 
 use http_range::HttpRange;
-use rustls::pki_types::{pem::PemObject, CertificateDer, PrivateKeyDer};
+use rustls::pki_types::{CertificateDer, PrivateKeyDer, pem::PemObject};
 use sstream::SStream;
 use url::Url;
 
@@ -23,12 +23,12 @@ use self::proto::message::{self, SMessage};
 pub use self::proto::resource;
 use self::proto::ws;
 use self::transfer::{TransferResult, Transfers};
+use crate::CONFIG;
 use crate::bencode;
 use crate::disk;
 use crate::handle;
 use crate::torrent;
 use crate::util::UHashMap;
-use crate::CONFIG;
 
 const POLL_INT_MS: usize = 1000;
 const CLEANUP_INT_MS: usize = 2000;

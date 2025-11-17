@@ -11,7 +11,7 @@ use std::{fs, io, thread};
 
 use self::cache::{BufCache, FileCache};
 use self::job::JobRes;
-use crate::{handle, CONFIG};
+use crate::{CONFIG, handle};
 
 const POLL_INT_MS: usize = 1000;
 const JOB_TIME_SLICE: u64 = 150;

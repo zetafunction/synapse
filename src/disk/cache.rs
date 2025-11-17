@@ -3,7 +3,7 @@ use std::{fs, io, mem, path};
 
 use std::io::{Read, Seek, SeekFrom, Write};
 
-use crate::util::{native, MHashMap};
+use crate::util::{MHashMap, native};
 
 const PB_LEN: usize = 256;
 

@@ -13,12 +13,12 @@ use byteorder::{BigEndian, ByteOrder};
 use url::Url;
 
 pub use self::errors::{Error, Result};
+use crate::CONFIG;
 use crate::bencode::BEncode;
 use crate::control::cio;
 use crate::disk;
 use crate::handle;
 use crate::torrent::Torrent;
-use crate::CONFIG;
 
 pub struct Tracker {
     poll: amy::Poller,

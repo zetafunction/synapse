@@ -583,7 +583,7 @@ impl ExtIDs {
 mod tests {
     use super::Peer;
     use crate::buffers::Buffer;
-    use crate::control::cio::{test, CIO};
+    use crate::control::cio::{CIO, test};
     use crate::torrent::Message;
 
     #[test]

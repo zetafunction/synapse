@@ -1,4 +1,4 @@
-use super::{proto, BUCKET_MAX, ID, MAX_BUCKETS, MIN_BOOTSTRAP_BKTS, TX_TIMEOUT_SECS};
+use super::{BUCKET_MAX, ID, MAX_BUCKETS, MIN_BOOTSTRAP_BKTS, TX_TIMEOUT_SECS, proto};
 use crate::tracker;
 use byteorder::{BigEndian, ByteOrder, WriteBytesExt};
 use chrono::{DateTime, Utc};
@@ -723,7 +723,7 @@ fn id_from_pow(pow: usize) -> ID {
 
 #[cfg(test)]
 mod tests {
-    use super::{id_from_pow, Bucket, Node, RoutingTable};
+    use super::{Bucket, Node, RoutingTable, id_from_pow};
     use num_bigint::BigUint;
 
     #[test]

@@ -2,8 +2,8 @@ use std::sync::{atomic, mpsc};
 use std::{io, process, thread};
 
 use crate::control::acio;
-use crate::{args, control, disk, log, rpc, throttle, tracker};
 use crate::{CONFIG, SHUTDOWN, THROT_TOKS};
+use crate::{args, control, disk, log, rpc, throttle, tracker};
 
 pub fn init(args: args::Args) -> Result<(), ()> {
     if let Some(level) = args.level {

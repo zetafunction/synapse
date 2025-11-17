@@ -31,7 +31,7 @@ use crate::session::torrent::current::Session;
 use crate::throttle::Throttle;
 use crate::tracker::{self, TrackerResponse};
 use crate::util::{FHashSet, UHashMap};
-use crate::{bencode, disk, rpc, util, CONFIG, EXT_PROTO, UT_META_ID, UT_PEX_ID};
+use crate::{CONFIG, EXT_PROTO, UT_META_ID, UT_PEX_ID, bencode, disk, rpc, util};
 use crate::{session, stat};
 
 const MAX_INFO_BYTES: i64 = 100 * 1000 * 1000;
@@ -1286,8 +1286,11 @@ impl<T: cio::CIO> Torrent<T> {
                                 total_size / 16_384
                             };
                             if implied_last_info_idx != last_idx {
-                                debug!("metadata_size {} and total_size {} differ in count of index pieces",
-                                self.info_bytes.len(), total_size);
+                                debug!(
+                                    "metadata_size {} and total_size {} differ in count of index pieces",
+                                    self.info_bytes.len(),
+                                    total_size
+                                );
                                 return Err(());
                             }
                             debug!(

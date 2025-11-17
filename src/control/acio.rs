@@ -5,10 +5,10 @@ use std::{io, time};
 
 use amy::{self, ChannelError};
 
+use crate::CONFIG;
 use crate::control::cio::{self, Error, Result};
 use crate::torrent::peer::reader::RRes;
 use crate::util::UHashMap;
-use crate::CONFIG;
 use crate::{disk, rpc, torrent, tracker};
 
 const POLL_INT_MS: usize = 1000;

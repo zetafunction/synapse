@@ -3,10 +3,10 @@ use std::mem;
 
 use byteorder::{BigEndian, ByteOrder};
 
-use crate::buffers::{Buffer, BUF_SIZE};
-use crate::torrent::peer::Message;
+use crate::buffers::{BUF_SIZE, Buffer};
 use crate::torrent::Bitfield;
-use crate::util::{aread, io_err_val, IOR};
+use crate::torrent::peer::Message;
+use crate::util::{IOR, aread, io_err_val};
 
 const MAX_EXT_MSG_BYTES: u32 = 100 * 1000 * 1000;
 

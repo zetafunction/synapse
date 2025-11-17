@@ -11,12 +11,12 @@ use url::Url;
 
 use super::proto::criterion::{self, Criterion, Operation};
 use super::proto::message::{CMessage, Error, SMessage};
-use super::proto::resource::{merge_json, Resource, ResourceKind, SResourceUpdate};
+use super::proto::resource::{Resource, ResourceKind, SResourceUpdate, merge_json};
 use super::{CtlMessage, Message};
+use crate::CONFIG;
 use crate::disk;
 use crate::torrent::info::Info;
-use crate::util::{random_string, FHashMap, FHashSet, MHashSet, SHashMap};
-use crate::CONFIG;
+use crate::util::{FHashMap, FHashSet, MHashSet, SHashMap, random_string};
 
 const USER_DATA_FILE: &str = "rpc_user_data";
 type RpcDiskFmt = SHashMap<Vec<u8>>;

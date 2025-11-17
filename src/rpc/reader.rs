@@ -1,5 +1,5 @@
 use super::proto::ws::Message;
-use crate::util::{aread, IOR};
+use crate::util::{IOR, aread};
 use byteorder::{BigEndian, ByteOrder};
 use std::{io, mem};
 

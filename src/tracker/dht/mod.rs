@@ -6,9 +6,9 @@ use std::time;
 
 use num_bigint::BigUint;
 
+use crate::CONFIG;
 use crate::disk;
 use crate::tracker;
-use crate::CONFIG;
 
 mod proto;
 mod rt;
@@ -53,7 +53,10 @@ impl Manager {
             rt::RoutingTable::new()
         };
         if !table.is_bootstrapped() {
-            info!("Attempting DHT bootstrap with node: {:?}!", CONFIG.dht.bootstrap_node);
+            info!(
+                "Attempting DHT bootstrap with node: {:?}!",
+                CONFIG.dht.bootstrap_node
+            );
             if let Some(addr) = CONFIG.dht.bootstrap_node {
                 let (msg, _) = table.add_addr(addr);
                 let bootstrap_result = sock.send_to(&msg.encode(), addr);

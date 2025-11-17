@@ -6,12 +6,12 @@ use std::{fs, io, mem, process, time};
 use chrono::Utc;
 
 use crate::throttle::Throttler;
-use crate::torrent::{self, peer, Torrent};
+use crate::torrent::{self, Torrent, peer};
 use crate::util::{
-    self, hash_to_id, id_to_hash, io_err, io_err_val, random_string, FHashSet, MHashMap, UHashMap,
-    UHashSet,
+    self, FHashSet, MHashMap, UHashMap, UHashSet, hash_to_id, id_to_hash, io_err, io_err_val,
+    random_string,
 };
-use crate::{disk, rpc, stat, tracker, CONFIG, DL_TOKEN, SHUTDOWN};
+use crate::{CONFIG, DL_TOKEN, SHUTDOWN, disk, rpc, stat, tracker};
 
 pub mod acio;
 pub mod cio;

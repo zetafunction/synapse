@@ -1,9 +1,9 @@
 use std::time::{Duration, Instant};
 
+use crate::CONFIG;
 use crate::control::cio;
 use crate::torrent::Peer;
-use crate::util::{random_sample, FHashSet, UHashMap, UnlimitedOrU64};
-use crate::CONFIG;
+use crate::util::{FHashSet, UHashMap, UnlimitedOrU64, random_sample};
 
 pub struct Choker {
     unchoked: Vec<usize>,
