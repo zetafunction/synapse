@@ -3,7 +3,6 @@ name = "synapse-bt"
 description = "Synapse BitTorrent client"
 version = "1.0.0"
 authors = ["Luminarys <postmaster@gensok.io>"]
-build = "build.rs"
 license = "ISC"
 repository = "https://github.com/Luminarys/synapse"
 edition = "2024"
@@ -15,9 +14,6 @@ name = "synapse"
 [workspace]
 members = ["sycli", "rpc", "session", "bencode", "adns", "protocol", "sstream"]
 exclude = ["synulator"]
-
-[build-dependencies]
-cc = "1.0"
 
 [dependencies]
 base32 = "0.5.1"
@@ -32,7 +28,6 @@ lazy_static = "1"
 libc = "0.2"
 metrohash = "1"
 net2 = "0.2"
-nix = "0.30.0"
 rand = "0.9.1"
 rustls = "0.23.26"
 sha-1 = "0.10.1"
@@ -57,6 +52,7 @@ percent-encoding = "2.3"
 thiserror = "2.0.12"
 blake3 = "1.8.2"
 mimalloc = { version = "0.1.48", optional = true }
+rustix = { version = "1.1.2", features = ["fs"] }
 
 [dependencies.ip_network]
 version = "0.4.1"

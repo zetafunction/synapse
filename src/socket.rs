@@ -3,7 +3,7 @@ use std::net::{SocketAddr, TcpStream};
 use std::os::unix::io::{AsRawFd, RawFd};
 
 use net2::{TcpBuilder, TcpStreamExt};
-use nix::errno::Errno::EINPROGRESS;
+use rustix::io::Errno;
 
 use crate::throttle::Throttle;
 
@@ -25,8 +25,10 @@ impl Socket {
         conn.set_nonblocking(true)?;
         if let Err(e) = conn.connect(addr) {
             // OSX gives the AddrNotAvailable error sometimes, and generic
-            // unix systems may give EINPROGRESS
-            if Some(EINPROGRESS as i32) != e.raw_os_error()
+            // unix systems may give INPROGRESS.
+            // TODO(Use ErrorKind::InProgress) once https://github.com/rust-lang/rust/issues/130840
+            // is stabilized.
+            if Some(Errno::INPROGRESS.raw_os_error()) != e.raw_os_error()
                 && e.kind() != ErrorKind::AddrNotAvailable
             {
                 return Err(e);
