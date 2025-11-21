@@ -1,6 +1,5 @@
 use std::time::{Duration, Instant};
 
-use crate::CONFIG;
 use crate::control::cio;
 use crate::torrent::Peer;
 use crate::util::{FHashSet, UHashMap, UnlimitedOrU64, random_sample};
@@ -19,12 +18,12 @@ pub struct SwapRes {
 }
 
 impl Choker {
-    pub fn new() -> Choker {
+    pub fn new(unchoke_slots_limit: UnlimitedOrU64) -> Choker {
         Choker {
             unchoked: Vec::with_capacity(5),
             interested: FHashSet::default(),
             last_updated: Instant::now(),
-            unchoke_slots_limit: CONFIG.peer.unchoke_slots_limit,
+            unchoke_slots_limit,
         }
     }
 

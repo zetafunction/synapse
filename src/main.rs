@@ -37,10 +37,9 @@ mod torrent;
 mod tracker;
 mod worker;
 
-use ip_network_table::IpNetworkTable;
 use rand::seq::IndexedRandom;
 use std::process;
-use std::sync::atomic;
+use std::sync::{Arc, atomic};
 
 pub use crate::protocol::DHT_EXT;
 pub use crate::protocol::EXT_PROTO;
@@ -53,7 +52,6 @@ pub const THROT_TOKS: usize = 2 * 1024 * 1024;
 pub static SHUTDOWN: atomic::AtomicBool = atomic::AtomicBool::new(false);
 
 lazy_static! {
-    pub static ref CONFIG: config::Config = config::Config::load();
     pub static ref PEER_ID: [u8; 20] = {
         let mut pid = [0u8; 20];
         let prefix = b"-SY0010-";
@@ -70,22 +68,11 @@ lazy_static! {
         pid
     };
     pub static ref DL_TOKEN: String = util::random_string(20);
-    pub static ref IP_FILTER: IpNetworkTable<u8> = {
-        let mut table = IpNetworkTable::new();
-
-        for k in CONFIG.ip_filter.keys() {
-            table.insert(*k, CONFIG.ip_filter[k]);
-            debug!(
-                "Add ip_filter entry: prefix={}, weight={}",
-                k, CONFIG.ip_filter[k]
-            );
-        }
-        table
-    };
 }
 
 fn main() {
     let args = args::args();
+    let config = Arc::new(config::Config::load());
     match init::init(args) {
         Ok(()) => {}
         Err(()) => {
@@ -94,7 +81,7 @@ fn main() {
         }
     }
     info!("Initialized, starting!");
-    match init::run() {
+    match init::run(config) {
         Ok(()) => process::exit(0),
         Err(()) => process::exit(1),
     }

@@ -1,5 +1,4 @@
 use super::{ID, VERSION};
-use crate::CONFIG;
 use crate::bencode::{self, BEncode};
 use crate::util::{addr_to_bytes, bytes_to_addr};
 use num_bigint::BigUint;
@@ -114,7 +113,13 @@ impl Request {
         }
     }
 
-    pub fn announce(transaction: Vec<u8>, id: ID, hash: [u8; 20], token: Vec<u8>) -> Self {
+    pub fn announce(
+        transaction: Vec<u8>,
+        id: ID,
+        hash: [u8; 20],
+        token: Vec<u8>,
+        dht_port: u16,
+    ) -> Self {
         Request {
             transaction,
             version: Some(VERSION.to_owned()),
@@ -122,7 +127,7 @@ impl Request {
                 id,
                 hash,
                 token,
-                port: CONFIG.dht.port,
+                port: dht_port,
                 implied_port: false,
             },
         }

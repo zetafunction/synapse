@@ -9,8 +9,8 @@ use sstream::SStream;
 
 use super::cache::RequestedSize;
 use super::{BufCache, FileCache, JOB_TIME_SLICE};
-use crate::CONFIG;
 use crate::buffers::Buffer;
+use crate::config::Config;
 use crate::torrent::{Info, LocIter};
 use crate::util::{hash_to_id, io_err};
 
@@ -290,9 +290,14 @@ impl Request {
         !matches!(self, Request::Validate { .. })
     }
 
-    pub fn execute(self, fc: &mut FileCache, bc: &mut BufCache) -> io::Result<JobRes> {
-        let sd = &CONFIG.disk.session;
-        let dd = &CONFIG.disk.directory;
+    pub fn execute(
+        self,
+        config: &Config,
+        fc: &mut FileCache,
+        bc: &mut BufCache,
+    ) -> io::Result<JobRes> {
+        let sd = &config.disk.session;
+        let dd = &config.disk.directory;
         let (mut tb, mut tpb, mut tpb2) = bc.data();
         match self {
             Request::Ping => {}

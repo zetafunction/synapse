@@ -1,8 +1,11 @@
-use std::sync::{atomic, mpsc};
+use std::sync::{Arc, atomic, mpsc};
 use std::{io, process, thread};
 
+use ip_network_table::IpNetworkTable;
+
+use crate::config::Config;
 use crate::control::acio;
-use crate::{CONFIG, SHUTDOWN, THROT_TOKS};
+use crate::{SHUTDOWN, THROT_TOKS};
 use crate::{args, control, disk, log, rpc, throttle, tracker};
 
 pub fn init(args: args::Args) -> Result<(), ()> {
@@ -16,10 +19,6 @@ pub fn init(args: args::Args) -> Result<(), ()> {
 
     info!("Initializing");
 
-    // Since the config is lazy loaded, dereference now to check it.
-    #[allow(clippy::no_effect)]
-    CONFIG.port;
-
     if let Err(e) = init_signals() {
         error!("Failed to initialize signal handlers: {}", e);
         return Err(());
@@ -27,8 +26,8 @@ pub fn init(args: args::Args) -> Result<(), ()> {
     Ok(())
 }
 
-pub fn run() -> Result<(), ()> {
-    match init_threads() {
+pub fn run(config: Arc<Config>) -> Result<(), ()> {
+    match init_threads(config) {
         Ok(threads) => {
             for thread in threads {
                 if thread.join().is_err() {
@@ -46,12 +45,12 @@ pub fn run() -> Result<(), ()> {
     }
 }
 
-fn init_threads() -> io::Result<Vec<thread::JoinHandle<()>>> {
+fn init_threads(config: Arc<Config>) -> io::Result<Vec<thread::JoinHandle<()>>> {
     let cpoll = amy::Poller::new()?;
     let mut creg = cpoll.get_registrar();
-    let (dh, disk_broadcast, dhj) = disk::start(&mut creg)?;
-    let (rh, rhj) = rpc::RPC::start(&mut creg, disk_broadcast.clone())?;
-    let (th, thj) = tracker::Tracker::start(&mut creg, disk_broadcast.clone())?;
+    let (dh, disk_broadcast, dhj) = disk::start(config.clone(), &mut creg)?;
+    let (rh, rhj) = rpc::RPC::start(config.clone(), &mut creg, disk_broadcast.clone())?;
+    let (th, thj) = tracker::Tracker::start(config.clone(), &mut creg, disk_broadcast.clone())?;
     let chans = acio::ACChans {
         disk_tx: dh.tx,
         disk_rx: dh.rx,
@@ -66,8 +65,17 @@ fn init_threads() -> io::Result<Vec<thread::JoinHandle<()>>> {
         .name("control".to_string())
         .spawn(move || {
             let throttler = throttle::Throttler::new(None, None, THROT_TOKS, &creg).unwrap();
-            let acio = acio::ACIO::new(cpoll, creg, chans).expect("Could not initialize IO");
-            match control::Control::new(acio, throttler, cdb) {
+            let acio = acio::ACIO::new(config.clone(), cpoll, creg, chans)
+                .expect("Could not initialize IO");
+            let ip_filter = {
+                let mut table = IpNetworkTable::new();
+                for (k, v) in config.ip_filter.iter() {
+                    table.insert(*k, *v);
+                    debug!("Add ip_filter entry: prefix={k}, weight={v}",);
+                }
+                table
+            };
+            match control::Control::new(config, ip_filter, acio, throttler, cdb) {
                 Ok(mut c) => {
                     tx.send(Ok(())).unwrap();
                     c.run();

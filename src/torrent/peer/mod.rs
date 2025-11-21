@@ -4,6 +4,8 @@ pub mod writer;
 use std::net::SocketAddr;
 use std::net::TcpStream;
 use std::{cmp, fmt, io, mem, time};
+
+use ip_network_table::IpNetworkTable;
 use thiserror::Error;
 
 pub use self::message::Message;
@@ -18,7 +20,7 @@ use crate::throttle::Throttle;
 use crate::torrent::{Bitfield, Info, Torrent};
 use crate::tracker;
 use crate::util;
-use crate::{CONFIG, DHT_EXT, IP_FILTER, PEER_ID};
+use crate::{DHT_EXT, PEER_ID};
 
 #[derive(Debug, Error)]
 pub enum Error {
@@ -54,6 +56,8 @@ pub mod message {
 
 /// Peer connection and associated metadata.
 pub struct Peer<T: cio::CIO> {
+    // It's a bit weird to plumb this through here but...
+    dht_port: u16,
     id: usize,
     cio: T,
     pieces: Bitfield,
@@ -135,8 +139,8 @@ impl PeerConn {
 
     /// Creates a new "outgoing" peer, which acts as a client.
     /// Once created, set_torrent should be called.
-    pub fn new_outgoing(ip: &SocketAddr) -> io::Result<PeerConn> {
-        if let Some((_, &IP_FILTER_BLOCK)) = IP_FILTER.longest_match(ip.ip()) {
+    pub fn new_outgoing(ip_filter: &IpNetworkTable<u8>, ip: &SocketAddr) -> io::Result<PeerConn> {
+        if let Some((_, &IP_FILTER_BLOCK)) = ip_filter.longest_match(ip.ip()) {
             let msg = format!(
                 "Outgoing connection to peer {} blocked by ip_filter",
                 ip.ip()
@@ -149,9 +153,9 @@ impl PeerConn {
 
     /// Creates a peer where we are acting as the server.
     /// Once the handshake is received, set_torrent should be called.
-    pub fn new_incoming(sock: TcpStream) -> io::Result<PeerConn> {
+    pub fn new_incoming(ip_filter: &IpNetworkTable<u8>, sock: TcpStream) -> io::Result<PeerConn> {
         let peer_ip = sock.peer_addr()?.ip();
-        if let Some((_, &IP_FILTER_BLOCK)) = IP_FILTER.longest_match(peer_ip) {
+        if let Some((_, &IP_FILTER_BLOCK)) = ip_filter.longest_match(peer_ip) {
             let msg = format!("Incoming connection from peer {peer_ip} blocked by ip_filter");
             debug!("{msg}");
             return Err(io::Error::new(io::ErrorKind::PermissionDenied, msg));
@@ -198,6 +202,7 @@ impl Peer<cio::test::TCIO> {
     ) -> Peer<cio::test::TCIO> {
         let piece_count = pieces.iter().count();
         Peer {
+            dht_port: 0,
             id,
             remote_status: Status::new(),
             local_status: Status::new(),
@@ -242,6 +247,7 @@ impl Peer<cio::test::TCIO> {
 
 impl<T: cio::CIO> Peer<T> {
     pub fn new(
+        dht_port: u16,
         id: usize,
         t: &mut Torrent<T>,
         cid: Option<[u8; 20]>,
@@ -250,6 +256,7 @@ impl<T: cio::CIO> Peer<T> {
         let throttle = t.get_throttle(0);
         let addr = Peer::setup_conn(&mut t.cio, id, throttle)?;
         let mut p = Peer {
+            dht_port,
             id,
             addr,
             remote_status: Status::new(),
@@ -381,7 +388,7 @@ impl<T: cio::CIO> Peer<T> {
         match *msg {
             Message::Handshake { rsv, id, .. } => {
                 if (rsv[DHT_EXT.0] & DHT_EXT.1) != 0 {
-                    self.send_message(Message::Port(CONFIG.dht.port));
+                    self.send_message(Message::Port(self.dht_port));
                 }
                 self.rsv = Some(rsv);
                 self.cid = Some(id);

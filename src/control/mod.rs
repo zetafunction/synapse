@@ -1,17 +1,19 @@
 use std::net::TcpStream;
 use std::path::PathBuf;
-use std::sync::atomic;
+use std::sync::{Arc, atomic};
 use std::{fs, io, mem, process, time};
 
 use chrono::Utc;
+use ip_network_table::IpNetworkTable;
 
+use crate::config::Config;
 use crate::throttle::Throttler;
 use crate::torrent::{self, Torrent, peer};
 use crate::util::{
     self, FHashSet, MHashMap, UHashMap, UHashSet, hash_to_id, id_to_hash, io_err, io_err_val,
     random_string,
 };
-use crate::{CONFIG, DL_TOKEN, SHUTDOWN, disk, rpc, stat, tracker};
+use crate::{DL_TOKEN, SHUTDOWN, disk, rpc, stat, tracker};
 
 pub mod acio;
 pub mod cio;
@@ -36,6 +38,8 @@ const ENQUEUE_JOB_SECS: u64 = 5;
 const JOB_INT_MS: usize = 500;
 
 pub struct Control<T: cio::CIO> {
+    config: Arc<Config>,
+    ip_filter: IpNetworkTable<u8>,
     throttler: Throttler,
     cio: T,
     tid_cnt: usize,
@@ -67,6 +71,7 @@ struct ServerData {
 }
 
 struct Queue {
+    max_dl: usize,
     active_dl: FHashSet<usize>,
     inactive_dl: [FHashSet<usize>; 6],
 }
@@ -88,6 +93,8 @@ struct JobData<T> {
 
 impl<T: cio::CIO> Control<T> {
     pub fn new(
+        config: Arc<Config>,
+        ip_filter: IpNetworkTable<u8>,
         mut cio: T,
         throttler: Throttler,
         db: amy::Sender<disk::Request>,
@@ -119,7 +126,10 @@ impl<T: cio::CIO> Control<T> {
         let job_timer = cio
             .set_timer(JOB_INT_MS)
             .map_err(|_| io_err_val("timer failure!"))?;
+        let max_dl = config.max_dl;
         Ok(Control {
+            config,
+            ip_filter,
             throttler,
             cio,
             tid_cnt: 0,
@@ -132,7 +142,7 @@ impl<T: cio::CIO> Control<T> {
             stat: stat::EMA::new(),
             data: Default::default(),
             db,
-            queue: Queue::new(),
+            queue: Queue::new(max_dl as usize),
         })
     }
 
@@ -161,7 +171,7 @@ impl<T: cio::CIO> Control<T> {
     }
 
     fn serialize(&mut self) {
-        let sd = &CONFIG.disk.session;
+        let sd = &self.config.disk.session;
         debug!("Serializing server data!");
         let mut path = PathBuf::from(sd);
         path.push("syn_data");
@@ -180,7 +190,7 @@ impl<T: cio::CIO> Control<T> {
     }
 
     fn deserialize(&mut self) -> io::Result<()> {
-        let sd = &CONFIG.disk.session;
+        let sd = &self.config.disk.session;
         debug!("Deserializing server data!");
         let mut pb = PathBuf::from(sd);
         pb.push("syn_data");
@@ -235,6 +245,7 @@ impl<T: cio::CIO> Control<T> {
         let tid = self.tid_cnt;
         let throttle = self.throttler.get_throttle(tid);
         if let Some(t) = Torrent::deserialize(
+            self.config.clone(),
             tid,
             &session_data,
             info_data.as_deref(),
@@ -324,7 +335,7 @@ impl<T: cio::CIO> Control<T> {
         };
         for ip in &peers {
             trace!("Adding peer({:?})!", ip);
-            match peer::PeerConn::new_outgoing(ip) {
+            match peer::PeerConn::new_outgoing(&self.ip_filter, ip) {
                 Ok(peer) => {
                     trace!("Added peer({:?})!", ip);
                     self.add_peer(id, peer);
@@ -355,7 +366,7 @@ impl<T: cio::CIO> Control<T> {
     }
 
     fn handle_incoming_conn(&mut self, conn: TcpStream) {
-        match peer::PeerConn::new_incoming(conn) {
+        match peer::PeerConn::new_incoming(&self.ip_filter, conn) {
             Ok(pconn) => match self.cio.add_peer(pconn) {
                 Ok(pid) => {
                     self.incoming.insert(pid);
@@ -441,6 +452,7 @@ impl<T: cio::CIO> Control<T> {
         let tid = self.tid_cnt;
         let throttle = self.throttler.get_throttle(tid);
         let t = Torrent::new(
+            self.config.clone(),
             tid,
             path,
             info,
@@ -504,7 +516,7 @@ impl<T: cio::CIO> Control<T> {
                 let res = id_to_hash(&id)
                     .and_then(|d| self.hash_idx.get(d.as_ref()))
                     .cloned();
-                let pres = peer::PeerConn::new_outgoing(&peer);
+                let pres = peer::PeerConn::new_outgoing(&self.ip_filter, &peer);
                 if let Some(tid) = res {
                     if let Ok(pc) = pres {
                         if let Some(id) = self.add_peer_rpc(tid, pc) {
@@ -813,7 +825,7 @@ impl ServerData {
 }
 
 impl Queue {
-    fn new() -> Queue {
+    fn new(max_dl: usize) -> Queue {
         let inactive_dl = [
             FHashSet::default(),
             FHashSet::default(),
@@ -823,13 +835,14 @@ impl Queue {
             FHashSet::default(),
         ];
         Queue {
+            max_dl,
             active_dl: FHashSet::default(),
             inactive_dl,
         }
     }
 
     fn dl_full(&self) -> bool {
-        self.active_dl.len() == CONFIG.max_dl as usize
+        self.active_dl.len() == self.max_dl
     }
 
     fn modify_pri(&mut self, id: usize, pri: u8, old_pri: u8) {

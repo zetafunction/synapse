@@ -23,8 +23,8 @@ use self::proto::message::{self, SMessage};
 pub use self::proto::resource;
 use self::proto::ws;
 use self::transfer::{TransferResult, Transfers};
-use crate::CONFIG;
 use crate::bencode;
+use crate::config::Config;
 use crate::disk;
 use crate::handle;
 use crate::torrent;
@@ -167,11 +167,12 @@ pub enum Message {
 
 #[allow(clippy::upper_case_acronyms)]
 pub struct RPC {
+    config: Arc<Config>,
     poll: amy::Poller,
     reg: amy::Registrar,
     ch: handle::Handle<CtlMessage, Message>,
     listener: TcpListener,
-    config: Option<Arc<rustls::ServerConfig>>,
+    server_config: Option<Arc<rustls::ServerConfig>>,
     lid: usize,
     cleanup: usize,
     processor: Processor,
@@ -181,7 +182,7 @@ pub struct RPC {
     disk: amy::Sender<disk::Request>,
 }
 
-fn load_certs(filename: &str) -> io::Result<Vec<CertificateDer<'_>>> {
+fn load_certs<'a>(filename: &str) -> io::Result<Vec<CertificateDer<'a>>> {
     let certs = CertificateDer::pem_file_iter(filename)
         .map_err(io::Error::other)?
         .collect::<result::Result<Vec<_>, _>>()
@@ -189,7 +190,7 @@ fn load_certs(filename: &str) -> io::Result<Vec<CertificateDer<'_>>> {
     Ok(certs)
 }
 
-fn load_private_key(filename: &str) -> io::Result<PrivateKeyDer<'_>> {
+fn load_private_key<'a>(filename: &str) -> io::Result<PrivateKeyDer<'a>> {
     let keys = PrivateKeyDer::pem_file_iter(filename)
         .map_err(io::Error::other)?
         .collect::<result::Result<Vec<_>, _>>()
@@ -213,6 +214,7 @@ fn load_private_key(filename: &str) -> io::Result<PrivateKeyDer<'_>> {
 
 impl RPC {
     pub fn start(
+        config: Arc<Config>,
         creg: &mut amy::Registrar,
         db: amy::Sender<disk::Request>,
     ) -> io::Result<(handle::Handle<Message, CtlMessage>, thread::JoinHandle<()>)> {
@@ -221,35 +223,36 @@ impl RPC {
         let cleanup = reg.set_interval(CLEANUP_INT_MS)?;
         let (ch, dh) = handle::Handle::new(creg, &mut reg)?;
 
-        let ip = if CONFIG.rpc.local {
+        let ip = if config.rpc.local {
             Ipv4Addr::new(127, 0, 0, 1)
         } else {
             Ipv4Addr::new(0, 0, 0, 0)
         };
-        let port = CONFIG.rpc.port;
+        let port = config.rpc.port;
         let listener = TcpListener::bind(SocketAddrV4::new(ip, port))?;
         listener.set_nonblocking(true)?;
         let lid = reg.register(&listener, amy::Event::Both)?;
 
         let disk = db.clone();
 
-        let config = match (CONFIG.rpc.ssl_cert.as_str(), CONFIG.rpc.ssl_key.as_str()) {
+        let server_config = match (config.rpc.ssl_cert.as_str(), config.rpc.ssl_key.as_str()) {
             ("", "") => {
                 info!("RPC SSL parameters not specified, using insecure connections!");
                 None
             }
             (cert_file, key_file) => {
-                let config = rustls::ServerConfig::builder()
+                let server_config = rustls::ServerConfig::builder()
                     .with_no_client_auth()
                     .with_single_cert(load_certs(cert_file)?, load_private_key(key_file)?)
                     .map_err(io::Error::other)?;
                 info!("SSL initialized!");
-                Some(Arc::new(config))
+                Some(Arc::new(server_config))
             }
         };
 
         let th = dh.run("rpc", move |ch| {
             RPC {
+                config: config.clone(),
                 ch,
                 disk,
                 poll,
@@ -259,9 +262,9 @@ impl RPC {
                 cleanup,
                 clients: UHashMap::default(),
                 incoming: UHashMap::default(),
-                processor: Processor::new(db),
+                processor: Processor::new(config, db),
                 transfers: Transfers::new(),
-                config,
+                server_config,
             }
             .run()
         })?;
@@ -419,13 +422,14 @@ impl RPC {
                 Ok((conn, ip)) => {
                     debug!("Accepted new connection from {:?}!", ip);
                     let id = self.reg.register(&conn, amy::Event::Both);
-                    let conn = if let Some(ref config) = self.config {
-                        SStream::from_ssl(conn, config)
+                    let conn = if let Some(server_config) = &self.server_config {
+                        SStream::from_ssl(conn, server_config)
                     } else {
                         SStream::from_plain(conn)
                     };
                     if let (Ok(id), Ok(conn)) = (id, conn) {
-                        self.incoming.insert(id, Incoming::new(conn));
+                        self.incoming
+                            .insert(id, Incoming::new(self.config.clone(), conn));
                     }
                 }
                 Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {

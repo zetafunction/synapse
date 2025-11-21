@@ -7,16 +7,19 @@ pub use self::job::Request;
 pub use self::job::Response;
 
 use std::collections::VecDeque;
+use std::sync::Arc;
 use std::{fs, io, thread};
 
 use self::cache::{BufCache, FileCache};
 use self::job::JobRes;
-use crate::{CONFIG, handle};
+use crate::config::Config;
+use crate::handle;
 
 const POLL_INT_MS: usize = 1000;
 const JOB_TIME_SLICE: u64 = 150;
 
 pub struct Disk {
+    config: Arc<Config>,
     poll: amy::Poller,
     ch: handle::Handle<Request, Response>,
     jobs: amy::Receiver<Request>,
@@ -28,6 +31,7 @@ pub struct Disk {
 
 impl Disk {
     pub fn new(
+        config: Arc<Config>,
         poll: amy::Poller,
         ch: handle::Handle<Request, Response>,
         jobs: amy::Receiver<Request>,
@@ -36,15 +40,16 @@ impl Disk {
             poll,
             ch,
             jobs,
-            files: FileCache::new(CONFIG.net.max_open_files),
+            files: FileCache::new(config.net.max_open_files),
             bufs: BufCache::new(),
             active: VecDeque::new(),
             sequential: VecDeque::new(),
+            config,
         }
     }
 
     pub fn run(&mut self) {
-        let sd = &CONFIG.disk.session;
+        let sd = &self.config.disk.session;
         fs::create_dir_all(sd).unwrap();
 
         loop {
@@ -66,7 +71,8 @@ impl Disk {
         // Try to finish up remaining jobs
         for job in self.active.drain(..) {
             if job.concurrent() {
-                job.execute(&mut self.files, &mut self.bufs).ok();
+                job.execute(&self.config, &mut self.files, &mut self.bufs)
+                    .ok();
             }
         }
     }
@@ -85,7 +91,7 @@ impl Disk {
             let tid = j.tid();
             let seq = !j.concurrent();
             let mut done = false;
-            match j.execute(&mut self.files, &mut self.bufs) {
+            match j.execute(&self.config, &mut self.files, &mut self.bufs) {
                 Ok(JobRes::Resp(r)) => {
                     done = true;
                     self.ch.send(r).ok();
@@ -167,6 +173,7 @@ impl Disk {
 }
 
 pub fn start(
+    config: Arc<Config>,
     creg: &mut amy::Registrar,
 ) -> io::Result<(
     handle::Handle<Response, Request>,
@@ -177,6 +184,6 @@ pub fn start(
     let mut reg = poll.get_registrar();
     let (ch, dh) = handle::Handle::new(creg, &mut reg)?;
     let (tx, rx) = reg.channel()?;
-    let h = dh.run("disk", move |h| Disk::new(poll, h, rx).run())?;
+    let h = dh.run("disk", move |h| Disk::new(config, poll, h, rx).run())?;
     Ok((ch, tx, h))
 }

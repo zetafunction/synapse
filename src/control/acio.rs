@@ -1,11 +1,12 @@
 use std::cell::RefCell;
 use std::net::{Ipv4Addr, SocketAddrV4, TcpListener};
 use std::rc::Rc;
+use std::sync::Arc;
 use std::{io, time};
 
 use amy::{self, ChannelError};
 
-use crate::CONFIG;
+use crate::config::Config;
 use crate::control::cio::{self, Error, Result};
 use crate::torrent::peer::reader::RRes;
 use crate::util::UHashMap;
@@ -32,6 +33,7 @@ pub struct ACChans {
 }
 
 struct ACIOData {
+    config: Arc<Config>,
     poll: amy::Poller,
     reg: amy::Registrar,
     peers: UHashMap<torrent::PeerConn>,
@@ -43,14 +45,20 @@ struct ACIOData {
 }
 
 impl ACIO {
-    pub fn new(poll: amy::Poller, reg: amy::Registrar, chans: ACChans) -> io::Result<ACIO> {
+    pub fn new(
+        config: Arc<Config>,
+        poll: amy::Poller,
+        reg: amy::Registrar,
+        chans: ACChans,
+    ) -> io::Result<ACIO> {
         let ip = Ipv4Addr::new(0, 0, 0, 0);
-        let port = CONFIG.port;
+        let port = config.port;
         let listener = TcpListener::bind(SocketAddrV4::new(ip, port))?;
         listener.set_nonblocking(true)?;
         let lid = reg.register(&listener, amy::Event::Both)?;
 
         let data = ACIOData {
+            config,
             poll,
             reg,
             chans,
@@ -205,11 +213,12 @@ impl cio::CIO for ACIO {
     }
 
     fn add_peer(&mut self, mut peer: torrent::PeerConn) -> Result<cio::PID> {
-        if self.data.borrow().peers.len() > CONFIG.net.max_open_sockets {
+        let d = self.data.borrow();
+        if d.peers.len() > d.config.net.max_open_sockets {
             let mut pruned = Vec::new();
-            for (id, peer) in &self.data.borrow().peers {
+            for (id, peer) in &d.peers {
                 if peer.last_action().elapsed()
-                    > time::Duration::from_secs(CONFIG.peer.prune_timeout)
+                    > time::Duration::from_secs(d.config.peer.prune_timeout)
                 {
                     pruned.push(*id)
                 }

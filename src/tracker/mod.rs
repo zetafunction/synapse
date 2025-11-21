@@ -13,14 +13,15 @@ use byteorder::{BigEndian, ByteOrder};
 use url::Url;
 
 pub use self::errors::{Error, Result};
-use crate::CONFIG;
 use crate::bencode::BEncode;
+use crate::config::Config;
 use crate::control::cio;
 use crate::disk;
 use crate::handle;
 use crate::torrent::Torrent;
 
 pub struct Tracker {
+    config: Arc<Config>,
     poll: amy::Poller,
     ch: handle::Handle<Request, Response>,
     http: http::Handler,
@@ -48,7 +49,6 @@ pub struct Announce {
     id: usize,
     url: Arc<Url>,
     hash: [u8; 20],
-    port: u16,
     uploaded: u64,
     downloaded: u64,
     left: u64,
@@ -94,6 +94,7 @@ const POLL_INT_MS: usize = 1000;
 
 impl Tracker {
     pub fn start(
+        config: Arc<Config>,
         creg: &mut amy::Registrar,
         db: amy::Sender<disk::Request>,
     ) -> io::Result<(handle::Handle<Response, Request>, thread::JoinHandle<()>)> {
@@ -101,12 +102,13 @@ impl Tracker {
         let mut reg = poll.get_registrar();
         let (ch, dh) = handle::Handle::new(creg, &mut reg)?;
         let timer = reg.set_interval(150)?;
-        let udp = udp::Handler::new(&reg)?;
-        let dht = dht::Manager::new(&reg, db)?;
-        let http = http::Handler::new(&reg)?;
+        let udp = udp::Handler::new(config.trk.port, &reg, config.port)?;
+        let dht = dht::Manager::new(config.clone(), &reg, db)?;
+        let http = http::Handler::new(&reg, config.port)?;
         let dns = dns::Resolver::new(&reg)?;
         let th = dh.run("trk", move |h| {
             Tracker {
+                config,
                 poll,
                 ch: h,
                 udp,
@@ -197,7 +199,8 @@ impl Tracker {
 
     fn handle_announce(&mut self, req: Announce) {
         debug!("Handling announce request!");
-        if self.udp.active_requests() + self.http.active_requests() > CONFIG.net.max_open_announces
+        if self.udp.active_requests() + self.http.active_requests()
+            > self.config.net.max_open_announces
         {
             self.queue.push_back(req);
         } else {
@@ -323,7 +326,6 @@ impl Request {
             id: torrent.id(),
             url,
             hash: torrent.info().hash,
-            port: CONFIG.port,
             uploaded: torrent.uploaded(),
             downloaded: torrent.downloaded(),
             // This should be fine because the true len is usually slightly less than

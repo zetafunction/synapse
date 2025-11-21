@@ -3,6 +3,7 @@ use std::collections::{HashMap, HashSet};
 use std::fs::OpenOptions;
 use std::io::Read;
 use std::path::Path;
+use std::sync::Arc;
 
 use crate::rpc_lib;
 use chrono::{DateTime, Duration, Utc};
@@ -13,7 +14,7 @@ use super::proto::criterion::{self, Criterion, Operation};
 use super::proto::message::{CMessage, Error, SMessage};
 use super::proto::resource::{Resource, ResourceKind, SResourceUpdate, merge_json};
 use super::{CtlMessage, Message};
-use crate::CONFIG;
+use crate::config::Config;
 use crate::disk;
 use crate::torrent::info::Info;
 use crate::util::{FHashMap, FHashSet, MHashSet, SHashMap, random_string};
@@ -27,6 +28,7 @@ type RpcDiskFmt = SHashMap<Vec<u8>>;
 // inlining appropriately
 
 pub struct Processor {
+    config: Arc<Config>,
     subs: SHashMap<FHashSet<usize>>,
     filter_subs: FHashMap<(usize, u64), Filter>,
     resources: SHashMap<Resource>,
@@ -68,8 +70,8 @@ pub enum TransferKind {
 const EXPIRATION_DUR: i64 = 120;
 
 impl Processor {
-    pub fn new(db: amy::Sender<disk::Request>) -> Processor {
-        let p = Path::new(&CONFIG.disk.session[..]).join(USER_DATA_FILE);
+    pub fn new(config: Arc<Config>, db: amy::Sender<disk::Request>) -> Processor {
+        let p = Path::new(&config.disk.session).join(USER_DATA_FILE);
         let mut data = Vec::new();
 
         let res = OpenOptions::new()
@@ -106,6 +108,7 @@ impl Processor {
             .collect();
 
         Processor {
+            config,
             subs: SHashMap::default(),
             filter_subs: FHashMap::default(),
             resources: SHashMap::default(),
@@ -745,7 +748,7 @@ impl Processor {
             .map(|(k, v)| (k.to_owned(), json::to_vec(v).unwrap()))
             .collect();
         if let Ok(data) = bincode::serialize(&json_data) {
-            let path = Path::new(&CONFIG.disk.session[..]).join(USER_DATA_FILE);
+            let path = Path::new(&self.config.disk.session).join(USER_DATA_FILE);
 
             self.db.send(disk::Request::WriteFile { data, path }).ok();
         }

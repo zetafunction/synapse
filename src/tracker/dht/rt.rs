@@ -81,12 +81,12 @@ impl RoutingTable {
         }
 
         RoutingTable {
+            id: BigUint::from_bytes_be(&id),
             buckets: vec![Bucket::new(BigUint::from(0u8), id_from_pow(160))],
             last_resp_recvd: Utc::now(),
             last_req_recvd: Utc::now(),
             last_token_refresh: Utc::now(),
             last_tick: Utc::now(),
-            id: BigUint::from_bytes_be(&id),
             transactions: HashMap::new(),
             torrents: HashMap::new(),
             bootstrapping: true,
@@ -136,7 +136,7 @@ impl RoutingTable {
         reqs
     }
 
-    pub fn announce(&mut self, hash: [u8; 20]) -> Vec<(proto::Request, SocketAddr)> {
+    pub fn announce(&mut self, hash: [u8; 20], dht_port: u16) -> Vec<(proto::Request, SocketAddr)> {
         let mut nodes: Vec<(proto::Node, Vec<u8>)> = Vec::new();
         for bucket in &self.buckets {
             for node in &bucket.nodes {
@@ -149,7 +149,7 @@ impl RoutingTable {
         let mut reqs = Vec::new();
         for (node, tok) in nodes {
             let tx = self.new_query_tx(node.id);
-            let req = proto::Request::announce(tx, self.id.clone(), hash, tok);
+            let req = proto::Request::announce(tx, self.id.clone(), hash, tok, dht_port);
             reqs.push((req, node.addr));
         }
         reqs

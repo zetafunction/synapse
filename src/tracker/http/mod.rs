@@ -19,6 +19,7 @@ const TIMEOUT_MS: u64 = 5_000;
 
 pub struct Handler {
     reg: amy::Registrar,
+    peer_port: u16,
     connections: UHashMap<Tracker>,
 }
 
@@ -138,9 +139,10 @@ impl TrackerState {
 }
 
 impl Handler {
-    pub fn new(reg: &amy::Registrar) -> io::Result<Handler> {
+    pub fn new(reg: &amy::Registrar, peer_port: u16) -> io::Result<Handler> {
         Ok(Handler {
             reg: reg.clone(),
+            peer_port,
             connections: UHashMap::default(),
         })
     }
@@ -355,7 +357,7 @@ impl Handler {
             .query("downloaded", req.downloaded.to_string().as_bytes())
             .query("left", req.left.to_string().as_bytes())
             .query("compact", b"1")
-            .query("port", req.port.to_string().as_bytes())
+            .query("port", self.peer_port.to_string().as_bytes())
             .query_opt("numwant", num_want.as_ref().map(|nw| nw.as_bytes()))
             .query_opt("event", event.map(|e| e.as_bytes()))
             .header("User-agent", concat!("synapse/", env!("CARGO_PKG_VERSION")))
