@@ -1,4 +1,5 @@
 use std::io::{self, Write};
+use std::sync::Arc;
 use std::{mem, result, str, time};
 
 use base64::prelude::{BASE64_STANDARD, Engine};
@@ -11,8 +12,9 @@ use super::reader::Reader;
 use super::writer::Writer;
 use super::{EMPTY_HTTP_RESP, UNAUTH_HTTP_RESP};
 use super::{Error, Result};
+use crate::DL_TOKEN;
+use crate::config::{Config, RpcConfig};
 use crate::util::{IOR, aread, sha1_hash};
-use crate::{CONFIG, DL_TOKEN};
 
 pub struct Client {
     pub conn: SStream,
@@ -23,6 +25,7 @@ pub struct Client {
 }
 
 pub struct Incoming {
+    config: Arc<Config>,
     pub conn: SStream,
     key: Option<String>,
     buf: [u8; 1024],
@@ -165,8 +168,9 @@ impl From<Incoming> for SStream {
 }
 
 impl Incoming {
-    pub fn new(conn: SStream) -> Incoming {
+    pub fn new(config: Arc<Config>, conn: SStream) -> Incoming {
         Incoming {
+            config,
             conn,
             buf: [0; 1024],
             pos: 0,
@@ -217,7 +221,7 @@ impl Incoming {
                     self.conn.write_all(&EMPTY_HTTP_RESP).ok();
                     return Err(io::ErrorKind::InvalidData.into());
                 }
-                match validate_upgrade(&req) {
+                match validate_upgrade(&self.config.rpc, &req) {
                     Ok(k) => {
                         self.key = Some(k);
                         return Ok(Some(IncomingStatus::Upgrade));
@@ -233,7 +237,7 @@ impl Incoming {
                         data: self.buf[idx..self.pos].to_owned(),
                         token,
                     }))
-                } else if let Some((id, range)) = validate_dl(&req) {
+                } else if let Some((id, range)) = validate_dl(&self.config.rpc, &req) {
                     Ok(Some(IncomingStatus::DL { id, range }))
                 } else {
                     // Ignore error, we're DCing anyways
@@ -286,7 +290,10 @@ impl FragBuf {
     }
 }
 
-fn validate_dl(req: &httparse::Request<'_, '_>) -> Option<(String, Option<String>)> {
+fn validate_dl(
+    config: &RpcConfig,
+    req: &httparse::Request<'_, '_>,
+) -> Option<(String, Option<String>)> {
     req.path
         .and_then(|path| Url::parse(&format!("http://localhost{path}")).ok())
         .and_then(|url| {
@@ -298,7 +305,7 @@ fn validate_dl(req: &httparse::Request<'_, '_>) -> Option<(String, Option<String
             } else {
                 return None;
             };
-            if CONFIG.rpc.auth {
+            if config.auth {
                 let pw = url
                     .query_pairs()
                     .find(|(k, _)| k == "token")
@@ -346,7 +353,10 @@ fn validate_tx(req: &httparse::Request<'_, '_>) -> Option<String> {
     None
 }
 
-fn validate_upgrade(req: &httparse::Request<'_, '_>) -> result::Result<String, bool> {
+fn validate_upgrade(
+    config: &RpcConfig,
+    req: &httparse::Request<'_, '_>,
+) -> result::Result<String, bool> {
     if !req.method.map(|m| m == "GET").unwrap_or(false) {
         return Err(false);
     }
@@ -375,7 +385,7 @@ fn validate_upgrade(req: &httparse::Request<'_, '_>) -> result::Result<String, b
         return Err(false);
     }
 
-    if CONFIG.rpc.auth {
+    if config.auth {
         let auth = req
             .path
             .and_then(|path| Url::parse(&format!("http://localhost{path}")).ok())
@@ -383,7 +393,7 @@ fn validate_upgrade(req: &httparse::Request<'_, '_>) -> result::Result<String, b
                 url.query_pairs()
                     .find(|(k, _)| k == "password")
                     .map(|(_, v)| format!("{v}"))
-                    .map(|p| p == CONFIG.rpc.password)
+                    .map(|p| p == config.password)
             })
             .or_else(|| {
                 req.headers
@@ -403,7 +413,7 @@ fn validate_upgrade(req: &httparse::Request<'_, '_>) -> result::Result<String, b
                     .and_then(|auth| {
                         auth.split_terminator(':')
                             .next_back()
-                            .map(|password| password == CONFIG.rpc.password)
+                            .map(|password| password == config.password)
                     })
             })
             .unwrap_or(false);

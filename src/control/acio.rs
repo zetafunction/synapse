@@ -1,11 +1,12 @@
 use std::cell::RefCell;
 use std::net::{Ipv4Addr, SocketAddrV4, TcpListener};
 use std::rc::Rc;
+use std::sync::Arc;
 use std::{io, time};
 
 use amy::{self, ChannelError};
 
-use crate::CONFIG;
+use crate::config::Config;
 use crate::control::cio::{self, Error, Result};
 use crate::torrent::peer::reader::RRes;
 use crate::util::UHashMap;
@@ -17,6 +18,7 @@ const PRUNE_GOAL: usize = 50;
 /// Amy based CIO implementation. Currently the default one used.
 #[allow(clippy::upper_case_acronyms)]
 pub struct ACIO {
+    config: Arc<Config>,
     data: Rc<RefCell<ACIOData>>,
 }
 
@@ -43,9 +45,14 @@ struct ACIOData {
 }
 
 impl ACIO {
-    pub fn new(poll: amy::Poller, reg: amy::Registrar, chans: ACChans) -> io::Result<ACIO> {
+    pub fn new(
+        config: Arc<Config>,
+        poll: amy::Poller,
+        reg: amy::Registrar,
+        chans: ACChans,
+    ) -> io::Result<ACIO> {
         let ip = Ipv4Addr::new(0, 0, 0, 0);
-        let port = CONFIG.port;
+        let port = config.port;
         let listener = TcpListener::bind(SocketAddrV4::new(ip, port))?;
         listener.set_nonblocking(true)?;
         let lid = reg.register(&listener, amy::Event::Both)?;
@@ -62,6 +69,7 @@ impl ACIO {
         };
 
         Ok(ACIO {
+            config,
             data: Rc::new(RefCell::new(data)),
         })
     }
@@ -205,11 +213,11 @@ impl cio::CIO for ACIO {
     }
 
     fn add_peer(&mut self, mut peer: torrent::PeerConn) -> Result<cio::PID> {
-        if self.data.borrow().peers.len() > CONFIG.net.max_open_sockets {
+        if self.data.borrow().peers.len() > self.config.net.max_open_sockets {
             let mut pruned = Vec::new();
             for (id, peer) in &self.data.borrow().peers {
                 if peer.last_action().elapsed()
-                    > time::Duration::from_secs(CONFIG.peer.prune_timeout)
+                    > time::Duration::from_secs(self.config.peer.prune_timeout)
                 {
                     pruned.push(*id)
                 }
@@ -331,6 +339,7 @@ impl cio::CIO for ACIO {
 
     fn new_handle(&self) -> Self {
         ACIO {
+            config: self.config.clone(),
             data: self.data.clone(),
         }
     }

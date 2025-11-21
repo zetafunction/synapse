@@ -25,13 +25,14 @@ pub use self::picker::Block;
 
 use self::picker::Picker;
 use crate::buffers::Buffer;
+use crate::config::Config;
 use crate::control::cio;
 use crate::rpc::resource::{self, Resource, SResourceUpdate};
 use crate::session::torrent::current::Session;
 use crate::throttle::Throttle;
 use crate::tracker::{self, TrackerResponse};
 use crate::util::{FHashSet, UHashMap};
-use crate::{CONFIG, EXT_PROTO, UT_META_ID, UT_PEX_ID, bencode, disk, rpc, util};
+use crate::{EXT_PROTO, UT_META_ID, UT_PEX_ID, bencode, disk, rpc, util};
 use crate::{session, stat};
 
 const MAX_INFO_BYTES: i64 = 100 * 1000 * 1000;
@@ -49,6 +50,7 @@ pub enum TrackerStatus {
 }
 
 pub struct Torrent<T: cio::CIO> {
+    config: Arc<Config>,
     id: usize,
     pieces: Bitfield,
     validating: FHashSet<u32>,
@@ -211,6 +213,7 @@ impl Files {
 
 impl<T: cio::CIO> Torrent<T> {
     pub fn new(
+        config: Arc<Config>,
         id: usize,
         path: Option<String>,
         info: Info,
@@ -274,6 +277,7 @@ impl<T: cio::CIO> Torrent<T> {
         let files = Files::new(&info, &pieces);
 
         let mut t = Torrent {
+            config: config.clone(),
             id,
             info,
             path,
@@ -292,7 +296,7 @@ impl<T: cio::CIO> Torrent<T> {
             leechers,
             throttle,
             trackers,
-            choker: choker::Choker::new(),
+            choker: choker::Choker::new(config.peer.unchoke_slots_limit),
             dirty: true,
             dirty_hash: None,
             status,
@@ -309,7 +313,7 @@ impl<T: cio::CIO> Torrent<T> {
                 0,
             ));
             t.validating.insert(0);
-        } else if CONFIG.disk.validate && t.info_idx.is_none() {
+        } else if config.disk.validate && t.info_idx.is_none() {
             t.validate();
         } else {
             t.announce_start();
@@ -319,6 +323,7 @@ impl<T: cio::CIO> Torrent<T> {
     }
 
     pub fn deserialize(
+        config: Arc<Config>,
         id: usize,
         session_data: &[u8],
         info_data: Option<&[u8]>,
@@ -404,6 +409,7 @@ impl<T: cio::CIO> Torrent<T> {
         let files = Files::new(&info, &pieces);
 
         let mut t = Torrent {
+            config: config.clone(),
             id,
             info,
             peers,
@@ -421,7 +427,7 @@ impl<T: cio::CIO> Torrent<T> {
             leechers,
             throttle,
             trackers,
-            choker: choker::Choker::new(),
+            choker: choker::Choker::new(config.peer.unchoke_slots_limit),
             dirty: false,
             dirty_hash: Some(blake3::hash(session_data)),
             status: Status {
@@ -616,7 +622,7 @@ impl<T: cio::CIO> Torrent<T> {
                         tracker.url,
                         s
                     );
-                    time += Duration::from_secs(CONFIG.net.min_announce_interval);
+                    time += Duration::from_secs(self.config.net.min_announce_interval);
                     tracker.update = Some(time);
                     tracker.status = TrackerStatus::Failure(s.clone());
                     tracker.last_announce = Utc::now();
@@ -625,7 +631,7 @@ impl<T: cio::CIO> Torrent<T> {
             Err(ref e) => {
                 if let Some(tracker) = self.trackers.iter_mut().find(|t| &*t.url == url) {
                     error!("Failed to query tracker {}: {}", tracker.url, e);
-                    time += Duration::from_secs(CONFIG.net.min_announce_interval);
+                    time += Duration::from_secs(self.config.net.min_announce_interval);
                     tracker.update = Some(time);
                     let reason = format!("Couldn't contact tracker: {e}");
                     tracker.status = TrackerStatus::Failure(reason);
@@ -1573,7 +1579,7 @@ impl<T: cio::CIO> Torrent<T> {
         let from = if let Some(ref p) = self.path {
             p.clone()
         } else {
-            CONFIG.disk.directory.clone()
+            self.config.disk.directory.clone()
         };
         self.cio.msg_disk(disk::Request::Move {
             tid: self.id,
@@ -1587,7 +1593,7 @@ impl<T: cio::CIO> Torrent<T> {
         let mut old_path = PathBuf::from(if let Some(p) = self.path.take() {
             p
         } else {
-            CONFIG.disk.directory.clone()
+            self.config.disk.directory.clone()
         });
         old_path.push(&self.info.name);
         self.cio.msg_disk(disk::Request::PurgeCache {
@@ -1638,7 +1644,11 @@ impl<T: cio::CIO> Torrent<T> {
             name,
             size,
             // TODO: Properly add this
-            path: self.path.as_ref().unwrap_or(&CONFIG.disk.directory).clone(),
+            path: self
+                .path
+                .as_ref()
+                .unwrap_or(&self.config.disk.directory)
+                .clone(),
             created: self.created,
             modified: Utc::now(),
             status: self.status.as_rpc(self.stat.avg_ul(), self.stat.avg_dl()),
@@ -1853,7 +1863,7 @@ impl<T: cio::CIO> Torrent<T> {
             return None;
         }
         if let Ok(pid) = self.cio.add_peer(conn)
-            && let Ok(p) = Peer::new(pid, self, None, None)
+            && let Ok(p) = Peer::new(self.config.dht.port, pid, self, None, None)
         {
             if self.info_idx.is_none() {
                 self.picker.add_peer(&p);
@@ -1870,7 +1880,7 @@ impl<T: cio::CIO> Torrent<T> {
         {
             return None;
         }
-        if let Ok(p) = Peer::new(pid, self, Some(id), Some(rsv)) {
+        if let Ok(p) = Peer::new(self.config.dht.port, pid, self, Some(id), Some(rsv)) {
             debug!("{:?}: Adding peer {:?}!", self.rpc_id(), pid);
             if self.info_idx.is_none() {
                 self.picker.add_peer(&p);

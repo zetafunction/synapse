@@ -2,11 +2,12 @@ use std::fs::OpenOptions;
 use std::io::{self, Read};
 use std::net::{SocketAddr, UdpSocket};
 use std::path::Path;
+use std::sync::Arc;
 use std::time;
 
 use num_bigint::BigUint;
 
-use crate::CONFIG;
+use crate::config::Config;
 use crate::disk;
 use crate::tracker;
 
@@ -23,6 +24,7 @@ const MIN_BOOTSTRAP_BKTS: usize = 32;
 const TX_TIMEOUT_SECS: i64 = 20;
 
 pub struct Manager {
+    config: Arc<Config>,
     id: usize,
     table: rt::RoutingTable,
     dht_flush: time::Instant,
@@ -32,16 +34,20 @@ pub struct Manager {
 }
 
 impl Manager {
-    pub fn new(reg: &amy::Registrar, db: amy::Sender<disk::Request>) -> io::Result<Manager> {
-        let sock = UdpSocket::bind(("0.0.0.0", CONFIG.dht.port))?;
+    pub fn new(
+        config: Arc<Config>,
+        reg: &amy::Registrar,
+        db: amy::Sender<disk::Request>,
+    ) -> io::Result<Manager> {
+        let sock = UdpSocket::bind(("0.0.0.0", config.dht.port))?;
         sock.set_nonblocking(true)?;
         let id = reg.register(&sock, amy::Event::Read)?;
         // Turn off DHT if no bootstrap is specified.
-        if CONFIG.dht.bootstrap_node.is_none() {
+        if config.dht.bootstrap_node.is_none() {
             reg.deregister(&sock)?;
         }
 
-        let p = Path::new(&CONFIG.disk.session[..]).join(SESSION_FILE);
+        let p = Path::new(&config.disk.session[..]).join(SESSION_FILE);
         let mut data = Vec::new();
         if let Ok(mut f) = OpenOptions::new().read(true).open(&p) {
             f.read_to_end(&mut data)?;
@@ -55,15 +61,16 @@ impl Manager {
         if !table.is_bootstrapped() {
             info!(
                 "Attempting DHT bootstrap with node: {:?}!",
-                CONFIG.dht.bootstrap_node
+                config.dht.bootstrap_node
             );
-            if let Some(addr) = CONFIG.dht.bootstrap_node {
+            if let Some(addr) = config.dht.bootstrap_node {
                 let (msg, _) = table.add_addr(addr);
                 let bootstrap_result = sock.send_to(&msg.encode(), addr);
             }
         }
 
         Ok(Manager {
+            config,
             table,
             sock,
             id,
@@ -133,7 +140,7 @@ impl Manager {
     }
 
     pub fn announce(&mut self, hash: [u8; 20]) {
-        for (req, a) in self.table.announce(hash) {
+        for (req, a) in self.table.announce(hash, self.config.dht.port) {
             self.send_msg(&req.encode(), a);
         }
     }
@@ -141,7 +148,7 @@ impl Manager {
     pub fn tick(&mut self) {
         if self.dht_flush.elapsed() > time::Duration::from_secs(60) {
             let data = self.table.serialize();
-            let path = Path::new(&CONFIG.disk.session[..]).join(SESSION_FILE);
+            let path = Path::new(&self.config.disk.session[..]).join(SESSION_FILE);
             self.db.send(disk::Request::WriteFile { data, path }).ok();
             self.dht_flush = time::Instant::now();
         }

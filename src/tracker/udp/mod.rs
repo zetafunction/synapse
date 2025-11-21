@@ -5,9 +5,9 @@ use std::time;
 use byteorder::{BigEndian, ByteOrder, ReadBytesExt, WriteBytesExt};
 use rand::random;
 
+use crate::PEER_ID;
 use crate::tracker::{Announce, Error, Event, Response, Result, TrackerResponse, dns};
 use crate::util::{FHashMap, UHashMap, bytes_to_addr};
-use crate::{CONFIG, PEER_ID};
 
 // We're not going to bother with backoff, if the tracker/network aren't working now
 // the torrent can just resend a request later.
@@ -18,6 +18,7 @@ const MAGIC_NUM: u64 = 0x417_2710_1980;
 pub struct Handler {
     id: usize,
     sock: UdpSocket,
+    peer_port: u16,
     connections: UHashMap<Connection>,
     transactions: FHashMap<u32, usize>,
     conn_count: usize,
@@ -39,14 +40,14 @@ enum State {
 }
 
 impl Handler {
-    pub fn new(reg: &amy::Registrar) -> io::Result<Handler> {
-        let port = CONFIG.trk.port;
-        let sock = UdpSocket::bind(("0.0.0.0", port))?;
+    pub fn new(listening_port: u16, reg: &amy::Registrar, peer_port: u16) -> io::Result<Handler> {
+        let sock = UdpSocket::bind(("0.0.0.0", listening_port))?;
         sock.set_nonblocking(true)?;
         let id = reg.register(&sock, amy::Event::Read)?;
         Ok(Handler {
             id,
             sock,
+            peer_port,
             connections: UHashMap::default(),
             transactions: FHashMap::default(),
             conn_count: 0,
@@ -275,9 +276,7 @@ impl Handler {
                 let nw = conn.announce.num_want.map(i32::from).unwrap_or(-1);
                 announce_req.write_i32::<BigEndian>(nw).unwrap();
                 // port
-                announce_req
-                    .write_u16::<BigEndian>(conn.announce.port)
-                    .unwrap();
+                announce_req.write_u16::<BigEndian>(self.peer_port).unwrap();
             }
             conn.state = State::Announcing { addr, data };
             conn.last_updated = time::Instant::now();
