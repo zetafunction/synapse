@@ -86,7 +86,7 @@ pub enum Request {
         path: PathBuf,
     },
     Download {
-        client: SStream,
+        client: Box<SStream>,
         ranges: Vec<HttpRange>,
         multipart: bool,
         file_len: u64,
@@ -272,7 +272,7 @@ impl Request {
         // from the end cheaply.
         ranges.reverse();
         Request::Download {
-            client,
+            client: Box::new(client),
             multipart: ranges.len() > 1,
             ranges,
             file_path,
