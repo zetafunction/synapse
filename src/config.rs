@@ -1,7 +1,9 @@
-use ip_network::IpNetwork;
 use std::collections::HashMap;
 use std::net::{SocketAddr, ToSocketAddrs};
 use std::{fs, process};
+
+use ip_network::IpNetwork;
+use ip_network_table::IpNetworkTable;
 use thiserror::Error;
 
 use crate::args;
@@ -19,7 +21,6 @@ pub enum Error {
     NoConfig,
 }
 
-#[derive(Debug, Clone)]
 pub struct Config {
     pub port: u16,
     pub max_dl: u32,
@@ -29,7 +30,7 @@ pub struct Config {
     pub disk: DiskConfig,
     pub net: NetConfig,
     pub peer: PeerConfig,
-    pub ip_filter: HashMap<IpNetwork, u8>,
+    pub ip_filter: IpNetworkTable<u8>,
 }
 
 #[derive(Debug, Clone)]
@@ -184,6 +185,14 @@ impl Config {
             port: file.dht.port,
             bootstrap_node: addr,
         };
+        let ip_filter = {
+            let mut table = IpNetworkTable::new();
+            for (k, v) in file.ip_filter.iter() {
+                table.insert(*k, *v);
+                debug!("Add ip_filter entry: prefix={k}, weight={v}",);
+            }
+            table
+        };
         file.disk.session = shellexpand::tilde(&file.disk.session).into();
         file.disk.directory = shellexpand::tilde(&file.disk.directory).into();
         Config {
@@ -195,7 +204,7 @@ impl Config {
             net: file.net,
             peer: file.peer,
             dht,
-            ip_filter: file.ip_filter,
+            ip_filter,
         }
     }
 }
@@ -265,10 +274,7 @@ fn default_unchoke_slots_limit() -> UnlimitedOrU64 {
     UnlimitedOrU64::new(8)
 }
 fn default_ip_filter() -> HashMap<IpNetwork, u8> {
-    HashMap::from([
-        (IpNetwork::from_str_truncate("0.0.0.0/0").unwrap(), 127),
-        (IpNetwork::from_str_truncate("::/0").unwrap(), 127),
-    ])
+    HashMap::new()
 }
 
 impl Default for Config {
@@ -282,7 +288,7 @@ impl Default for Config {
             net: Default::default(),
             dht: Default::default(),
             peer: Default::default(),
-            ip_filter: default_ip_filter(),
+            ip_filter: IpNetworkTable::new(),
         }
     }
 }

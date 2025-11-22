@@ -4,7 +4,6 @@ use std::sync::{Arc, atomic};
 use std::{fs, io, mem, process, time};
 
 use chrono::Utc;
-use ip_network_table::IpNetworkTable;
 
 use crate::config::Config;
 use crate::throttle::Throttler;
@@ -39,7 +38,6 @@ const JOB_INT_MS: usize = 500;
 
 pub struct Control<T: cio::CIO> {
     config: Arc<Config>,
-    ip_filter: IpNetworkTable<u8>,
     throttler: Throttler,
     cio: T,
     tid_cnt: usize,
@@ -94,7 +92,6 @@ struct JobData<T> {
 impl<T: cio::CIO> Control<T> {
     pub fn new(
         config: Arc<Config>,
-        ip_filter: IpNetworkTable<u8>,
         mut cio: T,
         throttler: Throttler,
         db: amy::Sender<disk::Request>,
@@ -129,7 +126,6 @@ impl<T: cio::CIO> Control<T> {
         let max_dl = config.max_dl;
         Ok(Control {
             config,
-            ip_filter,
             throttler,
             cio,
             tid_cnt: 0,
@@ -335,7 +331,7 @@ impl<T: cio::CIO> Control<T> {
         };
         for ip in &peers {
             trace!("Adding peer({:?})!", ip);
-            match peer::PeerConn::new_outgoing(&self.ip_filter, ip) {
+            match peer::PeerConn::new_outgoing(&self.config.ip_filter, ip) {
                 Ok(peer) => {
                     trace!("Added peer({:?})!", ip);
                     self.add_peer(id, peer);
@@ -366,7 +362,7 @@ impl<T: cio::CIO> Control<T> {
     }
 
     fn handle_incoming_conn(&mut self, conn: TcpStream) {
-        match peer::PeerConn::new_incoming(&self.ip_filter, conn) {
+        match peer::PeerConn::new_incoming(&self.config.ip_filter, conn) {
             Ok(pconn) => match self.cio.add_peer(pconn) {
                 Ok(pid) => {
                     self.incoming.insert(pid);
@@ -516,7 +512,7 @@ impl<T: cio::CIO> Control<T> {
                 let res = id_to_hash(&id)
                     .and_then(|d| self.hash_idx.get(d.as_ref()))
                     .cloned();
-                let pres = peer::PeerConn::new_outgoing(&self.ip_filter, &peer);
+                let pres = peer::PeerConn::new_outgoing(&self.config.ip_filter, &peer);
                 if let Some(tid) = res {
                     if let Ok(pc) = pres {
                         if let Some(id) = self.add_peer_rpc(tid, pc) {

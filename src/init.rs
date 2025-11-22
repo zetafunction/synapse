@@ -1,8 +1,6 @@
 use std::sync::{Arc, atomic, mpsc};
 use std::{io, process, thread};
 
-use ip_network_table::IpNetworkTable;
-
 use crate::config::Config;
 use crate::control::acio;
 use crate::{SHUTDOWN, THROT_TOKS};
@@ -67,15 +65,7 @@ fn init_threads(config: Arc<Config>) -> io::Result<Vec<thread::JoinHandle<()>>> 
             let throttler = throttle::Throttler::new(None, None, THROT_TOKS, &creg).unwrap();
             let acio = acio::ACIO::new(config.clone(), cpoll, creg, chans)
                 .expect("Could not initialize IO");
-            let ip_filter = {
-                let mut table = IpNetworkTable::new();
-                for (k, v) in config.ip_filter.iter() {
-                    table.insert(*k, *v);
-                    debug!("Add ip_filter entry: prefix={k}, weight={v}",);
-                }
-                table
-            };
-            match control::Control::new(config, ip_filter, acio, throttler, cdb) {
+            match control::Control::new(config, acio, throttler, cdb) {
                 Ok(mut c) => {
                     tx.send(Ok(())).unwrap();
                     c.run();
