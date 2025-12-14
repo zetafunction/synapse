@@ -34,9 +34,9 @@ pub struct Location {
 
 pub enum Request {
     Write {
-        tid: usize,
         data: Buffer,
         locations: LocIter,
+        context: Ctx,
         path: Option<String>,
     },
     Read {
@@ -101,6 +101,7 @@ pub enum Request {
 
 pub enum Response {
     Read { context: Ctx, data: Buffer },
+    Write { context: Ctx },
     ValidationComplete { tid: usize, invalid: Vec<u32> },
     PieceValidated { tid: usize, piece: u32, valid: bool },
     ValidationUpdate { tid: usize, percent: f32 },
@@ -109,6 +110,7 @@ pub enum Response {
     Error { tid: usize, err: io::Error },
 }
 
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Ctx {
     pub pid: usize,
     pub tid: usize,
@@ -125,9 +127,9 @@ pub enum JobRes {
 }
 
 impl Request {
-    pub fn write(tid: usize, data: Buffer, locations: LocIter, path: Option<String>) -> Request {
+    pub fn write(context: Ctx, data: Buffer, locations: LocIter, path: Option<String>) -> Request {
         Request::Write {
-            tid,
+            context,
             data,
             locations,
             path,
@@ -328,10 +330,10 @@ impl Request {
                 }
             }
             Request::Write {
+                context,
                 data,
                 locations,
                 path,
-                ..
             } => {
                 for loc in locations {
                     let pb = tpb.get(path.as_ref().unwrap_or(dd));
@@ -350,6 +352,7 @@ impl Request {
                         fc.flush_file(pb);
                     }
                 }
+                return Ok(JobRes::Resp(Response::write(context)));
             }
             Request::Read {
                 context,
@@ -646,15 +649,14 @@ impl Request {
     }
 
     pub fn tid(&self) -> Option<usize> {
-        match *self {
-            Request::Read { ref context, .. } => Some(context.tid),
+        match self {
+            Request::Read { context, .. } | Request::Write { context, .. } => Some(context.tid),
             Request::Serialize { tid, .. }
             | Request::Validate { tid, .. }
             | Request::ValidatePiece { tid, .. }
             | Request::PurgeCache { tid, .. }
             | Request::Delete { tid, .. }
-            | Request::Move { tid, .. }
-            | Request::Write { tid, .. } => Some(tid),
+            | Request::Move { tid, .. } => Some(*tid),
             Request::WriteFile { .. }
             | Request::Download { .. }
             | Request::Shutdown
@@ -711,6 +713,10 @@ impl Response {
         Response::Read { context, data }
     }
 
+    pub fn write(context: Ctx) -> Response {
+        Response::Write { context }
+    }
+
     pub fn error(tid: usize, err: io::Error) -> Response {
         Response::Error { tid, err }
     }
@@ -724,13 +730,14 @@ impl Response {
     }
 
     pub fn tid(&self) -> usize {
-        match *self {
-            Response::Read { ref context, .. } => context.tid,
+        match self {
+            Response::Read { context, .. } => context.tid,
+            Response::Write { context, .. } => context.tid,
             Response::ValidationComplete { tid, .. }
             | Response::Moved { tid, .. }
             | Response::ValidationUpdate { tid, .. }
             | Response::PieceValidated { tid, .. }
-            | Response::Error { tid, .. } => tid,
+            | Response::Error { tid, .. } => *tid,
             Response::FreeSpace(_) => unreachable!(),
         }
     }

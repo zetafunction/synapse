@@ -776,6 +776,7 @@ impl<T: cio::CIO> Torrent<T> {
                     peer.send_message(p);
                 }
             }
+            disk::Response::Write { context: _ } => { /* TODO: implement */ }
             disk::Response::Moved { path, .. } => {
                 debug!("Moved torrent!");
                 self.set_path_skip_files(path);
@@ -1814,8 +1815,10 @@ impl<T: cio::CIO> Torrent<T> {
     /// The disk send handle is also provided.
     fn write_piece(&mut self, index: u32, begin: u32, data: Buffer) {
         let locs = Info::block_disk_locs_pri(&self.info, &self.priorities, index, begin);
+        // pid and len are ignored for write contexts
+        let ctx = disk::Ctx::new(0, self.id, index, begin, 0);
         self.cio
-            .msg_disk(disk::Request::write(self.id, data, locs, self.path.clone()));
+            .msg_disk(disk::Request::write(ctx, data, locs, self.path.clone()));
     }
 
     /// Issues a read request of the given torrent

@@ -15,6 +15,9 @@ use self::job::JobRes;
 use crate::config::Config;
 use crate::handle;
 
+#[cfg(test)]
+mod tests;
+
 const POLL_INT_MS: usize = 1000;
 const JOB_TIME_SLICE: u64 = 150;
 
