@@ -11,7 +11,7 @@ use std::path::Path;
 use byteorder::{BigEndian, ByteOrder};
 use metrohash::MetroHash;
 use rand::distr::{Alphanumeric, SampleString};
-use rand::{self, Rng};
+use rand::{self, RngExt};
 use sha1::{Digest, Sha1};
 use url::Url;
 
@@ -25,7 +25,7 @@ pub type MHashMap<K, V> = HashMap<K, V, MBuildHasher>;
 pub type MHashSet<T> = HashSet<T, MBuildHasher>;
 pub type SHashMap<T> = MHashMap<String, T>;
 
-pub use self::io::{IOR, aread, awrite, io_err, io_err_val};
+pub use self::io::{aread, awrite, io_err, io_err_val, IOR};
 
 #[derive(Debug, Clone, Copy, Eq, Ord, PartialEq, PartialOrd)]
 pub struct UnlimitedOrU64(Option<std::num::NonZeroU64>);

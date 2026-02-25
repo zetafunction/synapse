@@ -3,7 +3,7 @@ use crate::tracker;
 use byteorder::{BigEndian, ByteOrder, WriteBytesExt};
 use chrono::{DateTime, Utc};
 use num_bigint::BigUint;
-use rand::{self, Rng};
+use rand::{self, RngExt};
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::{cmp, mem};
