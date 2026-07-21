@@ -687,7 +687,7 @@ impl Processor {
     }
 
     pub fn remove_client(&mut self, client: usize) {
-        for (_, sub) in self.subs.iter_mut() {
+        for sub in self.subs.values_mut() {
             sub.remove(&client);
         }
         self.filter_subs.retain(|&(c, _), _| c != client);

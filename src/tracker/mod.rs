@@ -255,12 +255,7 @@ impl Tracker {
     }
 
     fn handle_timer(&mut self) {
-        for r in self
-            .http
-            .tick()
-            .into_iter()
-            .chain(self.udp.tick().into_iter())
-        {
+        for r in self.http.tick().into_iter().chain(self.udp.tick()) {
             self.send_response(r);
         }
 
@@ -317,11 +312,7 @@ impl Request {
         torrent: &Torrent<T>,
         event: Option<Event>,
     ) -> Option<Request> {
-        let url = if let Some(trk) = torrent.trackers().front() {
-            trk.url.clone()
-        } else {
-            return None;
-        };
+        let url = torrent.trackers().front()?.url.clone();
         Some(Request::Announce(Announce {
             id: torrent.id(),
             url,

@@ -65,7 +65,7 @@ impl Manager {
             );
             if let Some(addr) = config.dht.bootstrap_node {
                 let (msg, _) = table.add_addr(addr);
-                let bootstrap_result = sock.send_to(&msg.encode(), addr);
+                let _bootstrap_result = sock.send_to(&msg.encode(), addr);
             }
         }
 

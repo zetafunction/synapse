@@ -1800,7 +1800,7 @@ impl<T: cio::CIO> Torrent<T> {
         let mut active = self.stat.active();
         self.picker.tick();
 
-        for (_, peer) in self.peers.iter_mut() {
+        for peer in self.peers.values_mut() {
             active |= peer.tick();
         }
         active

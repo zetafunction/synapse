@@ -285,7 +285,7 @@ impl Picker {
             p.remove_peer(peer);
         }
 
-        for (_, req) in self.downloading.iter_mut() {
+        for req in self.downloading.values_mut() {
             if let Some((idx, _)) = req
                 .reqd_from
                 .iter()
