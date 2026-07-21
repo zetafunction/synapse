@@ -179,7 +179,7 @@ mod tests {
     fn test_available() {
         let b = Bitfield::new(3);
         let mut picker = Picker::new(&b);
-        let mut peers = vec![
+        let mut peers = [
             Peer::test_from_pieces(0, b.clone()),
             Peer::test_from_pieces(0, b.clone()),
             Peer::test_from_pieces(0, b.clone()),
@@ -209,7 +209,7 @@ mod tests {
         let b = Bitfield::new(3);
 
         let mut picker = Picker::new(&b);
-        let mut peers = vec![
+        let mut peers = [
             Peer::test_from_pieces(0, b.clone()),
             Peer::test_from_pieces(0, b.clone()),
             Peer::test_from_pieces(0, b.clone()),
@@ -226,7 +226,7 @@ mod tests {
         for peer in peers.iter() {
             picker.add_peer(peer);
         }
-        picker.remove_peer(&mut peers[0]);
+        picker.remove_peer(&peers[0]);
 
         assert_eq!(picker.pick(&mut peers[1]), Some(2));
         picker.completed(2);

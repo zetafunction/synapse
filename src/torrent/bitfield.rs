@@ -1,6 +1,6 @@
 use std::fmt;
 
-use base64::prelude::{BASE64_STANDARD, Engine};
+use base64::prelude::{Engine, BASE64_STANDARD};
 
 use crate::protocol;
 
@@ -302,8 +302,8 @@ impl Iterator for BitfieldIter<'_> {
 
 #[cfg(test)]
 mod tests {
-    use super::Bitfield;
     use super::protocol;
+    use super::Bitfield;
 
     #[test]
     fn test_count() {
@@ -325,7 +325,7 @@ mod tests {
     fn test_data_empty() {
         let pf = Bitfield::new(0);
         assert!(pf.len() == 0);
-        assert!(pf.data().len() == 0);
+        assert!(pf.data().is_empty());
     }
 
     #[test]
@@ -430,13 +430,13 @@ mod tests {
     fn test_usable() {
         let mut pf1 = Bitfield::new(10);
         let mut pf2 = Bitfield::new(10);
-        assert!(pf1.usable(&pf2) == false);
+        assert!(!pf1.usable(&pf2));
         pf2.set_bit(9);
-        assert!(pf1.usable(&pf2) == true);
+        assert!(pf1.usable(&pf2));
         pf1.set_bit(9);
-        assert!(pf1.usable(&pf2) == false);
+        assert!(!pf1.usable(&pf2));
         pf2.set_bit(5);
-        assert!(pf1.usable(&pf2) == true);
+        assert!(pf1.usable(&pf2));
     }
 
     #[test]

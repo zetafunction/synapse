@@ -3,10 +3,10 @@ use std::mem;
 
 use byteorder::{BigEndian, ByteOrder};
 
-use crate::buffers::{BUF_SIZE, Buffer};
-use crate::torrent::Bitfield;
+use crate::buffers::{Buffer, BUF_SIZE};
 use crate::torrent::peer::Message;
-use crate::util::{IOR, aread, io_err_val};
+use crate::torrent::Bitfield;
+use crate::util::{aread, io_err_val, IOR};
 
 const MAX_EXT_MSG_BYTES: u32 = 100 * 1000 * 1000;
 
@@ -337,11 +337,11 @@ mod tests {
                 return Err(io::Error::new(io::ErrorKind::WouldBlock, ""));
             }
             let start = self.idx;
-            for i in 0..buf.len() {
+            for element in buf {
                 if self.idx >= self.data.len() {
                     break;
                 }
-                buf[i] = self.data[self.idx];
+                *element = self.data[self.idx];
                 self.idx += 1;
             }
             Ok(self.idx - start)

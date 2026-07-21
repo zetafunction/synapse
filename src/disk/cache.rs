@@ -350,7 +350,7 @@ mod tests {
         assert_matches!(
             cache.write_file_range(
                 &path,
-                RequestedSize::WithFallocate(hello_world.as_bytes().len() as u64),
+                RequestedSize::WithFallocate(hello_world.len() as u64),
                 0,
                 hello_world.as_bytes()
             ),

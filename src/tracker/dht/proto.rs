@@ -537,23 +537,21 @@ impl Node {
 #[cfg(test)]
 mod tests {
     use super::{Request, Response};
-    use platina;
 
     struct DhtProtoTest;
 
     impl platina::Testable for DhtProtoTest {
         fn run_testcase(&mut self, case: &mut platina::TestCase) {
             let encoded = case.get_param("dht_msg").unwrap();
-            let reencoded;
-            if let Some(_) = case.get_param("response") {
+            let reencoded = if case.get_param("response").is_some() {
                 let decoded = Response::decode(encoded.as_bytes());
                 case.compare_and_update_param("decoded", &format!("{:#?}", decoded));
-                reencoded = decoded.map(Response::encode);
+                decoded.map(Response::encode)
             } else {
                 let decoded = Request::decode(encoded.as_bytes());
                 case.compare_and_update_param("decoded", &format!("{:#?}", decoded));
-                reencoded = decoded.map(Request::encode);
-            }
+                decoded.map(Request::encode)
+            };
             if let Ok(bytes) = reencoded {
                 assert_eq!(&bytes[..], encoded.as_bytes());
             }

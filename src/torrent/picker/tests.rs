@@ -1,8 +1,8 @@
 use super::{Block, Picker};
 use crate::control;
 use crate::torrent::{Bitfield, Info, Peer as TGPeer};
-use rand::RngExt;
 use rand::seq::IteratorRandom;
+use rand::RngExt;
 use std::cell::RefCell;
 use std::collections::HashMap;
 
@@ -22,7 +22,7 @@ impl Simulation {
             let connected = (0..cfg.peers as usize).sample(&mut rng, cfg.connect_limit as usize);
             let unchoked = connected
                 .iter()
-                .map(|v| *v)
+                .copied()
                 .sample(&mut rng, cfg.unchoke_limit as usize);
             let peer = Peer {
                 picker: picker.clone(),
@@ -76,7 +76,7 @@ impl Simulation {
         for peer in self.peers.borrow_mut().iter().skip(1) {
             total += peer.compl.unwrap() as f64;
         }
-        return (self.ticks, total / (self.cfg.peers as f64 - 1.));
+        (self.ticks, total / (self.cfg.peers as f64 - 1.))
     }
 
     fn tick(&mut self) -> Result<(), ()> {
@@ -88,9 +88,9 @@ impl Simulation {
                         peer.requests.pop().unwrap()
                     } else {
                         peer.requests
-                            .remove((&mut rng).random_range(0..peer.requests.len()))
+                            .remove(rng.random_range(0..peer.requests.len()))
                     };
-                    let ref mut received = self.peers.borrow_mut()[req.peer];
+                    let received = &mut self.peers.borrow_mut()[req.peer];
                     received
                         .picker
                         .completed(Block::new(req.piece, 0), |_| ())
@@ -116,7 +116,7 @@ impl Simulation {
             }
 
             for pid in peer.unchoked_by.iter() {
-                let ref mut ucp = self.peers.borrow_mut()[*pid];
+                let ucp = &mut self.peers.borrow_mut()[*pid];
                 let cnt = peer.requested_pieces.get_mut(&ucp.data.id()).unwrap();
                 if peer.data.pieces().usable(ucp.data.pieces()) {
                     while *cnt < self.cfg.req_queue_len {
@@ -140,7 +140,11 @@ impl Simulation {
             .filter(|p| !p.data.pieces().complete())
             .map(|p| p.data.id())
             .collect::<Vec<_>>();
-        if inc.is_empty() { Ok(()) } else { Err(()) }
+        if inc.is_empty() {
+            Ok(())
+        } else {
+            Err(())
+        }
     }
 }
 

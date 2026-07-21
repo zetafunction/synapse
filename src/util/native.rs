@@ -37,16 +37,13 @@ mod tests {
     #[test]
     fn fallocate_and_is_sparse_match() {
         let test_file = tempfile::tempfile().unwrap();
-        match fallocate(&test_file, 88_888_888) {
-            Ok(is_sparsely_allocated) => {
-                assert_matches!(is_sparse(&test_file), Ok(val) if val == is_sparsely_allocated);
-                assert_eq!(test_file.metadata().unwrap().len(), 88_888_888);
-            }
-            // Ignore errors as some operating systems and/or filesystems do not support this
-            // operation.
-            // TODO: If the Rust test harness ever gets the option to mark tests as ignored/skipped
-            // at runtime, use that functionality here.
-            Err(_) => (),
+        // Ignore errors as some operating systems and/or filesystems do not support this
+        // operation.
+        // TODO: If the Rust test harness ever gets the option to mark tests as ignored/skipped
+        // at runtime, use that functionality here.
+        if let Ok(is_sparsely_allocated) = fallocate(&test_file, 88_888_888) {
+            assert_matches!(is_sparse(&test_file), Ok(val) if val == is_sparsely_allocated);
+            assert_eq!(test_file.metadata().unwrap().len(), 88_888_888);
         }
     }
 

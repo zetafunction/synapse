@@ -1,9 +1,9 @@
 use std::collections::HashSet;
 
 use super::*;
-use crate::buffers::{BUF_SIZE, Buffer};
-use crate::torrent::Info;
+use crate::buffers::{Buffer, BUF_SIZE};
 use crate::torrent::info::File;
+use crate::torrent::Info;
 use crate::{config, handle};
 
 struct Env {
@@ -56,10 +56,9 @@ impl Drop for Env {
 
 // TODO: Add this helper to the Info impl?
 fn make_test_info(name: &str, files: &[File], piece_len: u64) -> Info {
-    let total_len = files.iter().map(|f| f.length).sum();
-    let piece_count = (total_len + piece_len - 1) / piece_len;
-    let piece_count = usize::try_from(piece_count).unwrap();
-    let piece_idx = Info::generate_piece_idx(piece_count, piece_len, &files);
+    let total_len: u64 = files.iter().map(|f| f.length).sum();
+    let piece_count: usize = total_len.div_ceil(piece_len).try_into().unwrap();
+    let piece_idx = Info::generate_piece_idx(piece_count, piece_len, files);
     Info {
         name: name.to_string(),
         comment: None,

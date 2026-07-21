@@ -2,7 +2,7 @@ use std::time::{Duration, Instant};
 
 use crate::control::cio;
 use crate::torrent::Peer;
-use crate::util::{FHashSet, UHashMap, UnlimitedOrU64, random_sample};
+use crate::util::{random_sample, FHashSet, UHashMap, UnlimitedOrU64};
 
 pub struct Choker {
     unchoked: Vec<usize>,
@@ -183,7 +183,7 @@ mod tests {
             let pc = Peer::test_from_stats(i, 0, 0);
             h.insert(i, pc);
         }
-        assert_eq!(c.unchoked.contains(&v[0].id()), true);
+        assert!(c.unchoked.contains(&v[0].id()));
         assert_eq!(
             c.remove_peer(&mut v[0], &mut h),
             Some(SwapRes {
@@ -191,20 +191,20 @@ mod tests {
                 unchoked: 5,
             })
         );
-        assert_eq!(c.unchoked.contains(&v[0].id()), false);
+        assert!(!c.unchoked.contains(&v[0].id()));
     }
 
     #[test]
     fn test_update_upload() {
         let mut c = Choker::new_with_limit(5);
         let mut h = UHashMap::default();
-        assert_eq!(c.update_upload(&mut h).is_none(), true);
+        assert!(c.update_upload(&mut h).is_none());
         for i in 0..6 {
             let mut p = Peer::test_from_stats(i, i as u32, 6 - i as u32);
             c.add_peer(&mut p);
             h.insert(i, p);
         }
-        assert_eq!(c.update_upload(&mut h).is_none(), true);
+        assert!(c.update_upload(&mut h).is_none());
         c.last_updated = Instant::now() - Duration::from_secs(11);
         let res = c.update_upload(&mut h).unwrap();
         assert_eq!(res.choked, 0);
@@ -215,13 +215,13 @@ mod tests {
     fn test_update_download() {
         let mut c = Choker::new_with_limit(5);
         let mut h = UHashMap::default();
-        assert_eq!(c.update_download(&mut h).is_none(), true);
+        assert!(c.update_download(&mut h).is_none());
         for i in 0..6 {
             let mut p = Peer::test_from_stats(i, 6 - i as u32, i as u32);
             c.add_peer(&mut p);
             h.insert(i, p);
         }
-        assert_eq!(c.update_download(&mut h).is_none(), true);
+        assert!(c.update_download(&mut h).is_none());
         c.last_updated = Instant::now() - Duration::from_secs(11);
         let res = c.update_download(&mut h).unwrap();
         assert_eq!(res.choked, 0);

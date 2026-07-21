@@ -114,7 +114,7 @@ mod test {
             .encode(&mut encoded);
         assert_eq!(
             String::from_utf8(encoded).unwrap(),
-            vec![
+            [
                 "GET /foobar/baz?a=b&b=c HTTP/1.0",
                 "header1: value1",
                 "header2: value2",
@@ -133,19 +133,19 @@ mod test {
             .encode(&mut encoded);
         assert_eq!(
             String::from_utf8(encoded).unwrap(),
-            vec!["GET /foobar/baz?a=b&b=c HTTP/1.0", "\r\n",].join("\r\n")
+            ["GET /foobar/baz?a=b&b=c HTTP/1.0", "\r\n"].join("\r\n")
         );
     }
 
     #[test]
     fn test_percent_encode_query() {
         let mut encoded = Vec::new();
-        let req = RequestBuilder::new("GET", "/foobar/baz", None)
+        RequestBuilder::new("GET", "/foobar/baz", None)
             .query("a", "&".as_bytes())
             .encode(&mut encoded);
         assert_eq!(
             String::from_utf8(encoded).unwrap(),
-            vec!["GET /foobar/baz?a=%26 HTTP/1.0", "\r\n",].join("\r\n")
+            ["GET /foobar/baz?a=%26 HTTP/1.0", "\r\n",].join("\r\n")
         );
     }
 }

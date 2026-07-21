@@ -60,7 +60,7 @@ pub trait CIO {
 
     /// Applies f to a peer if it exists
     fn get_peer<T, F: FnOnce(&mut torrent::PeerConn) -> T>(&mut self, peer: PID, f: F)
-    -> Option<T>;
+        -> Option<T>;
 
     /// Removes a peer - This will trigger an error being
     /// reported at the next poll time, clients should wait
@@ -91,7 +91,7 @@ pub trait CIO {
 
 #[cfg(test)]
 pub mod test {
-    use super::{CIO, Event, PID, Result, TID};
+    use super::{Event, Result, CIO, PID, TID};
     use crate::{disk, rpc, torrent, tracker};
     use std::collections::HashMap;
     use std::sync::{Arc, Mutex};
@@ -132,7 +132,7 @@ pub mod test {
 
     impl CIO for TCIO {
         fn poll(&mut self, _: &mut Vec<Event>) -> Result<()> {
-            return Ok(());
+            Ok(())
         }
 
         fn propagate(&mut self, _: Event) {}
@@ -151,11 +151,7 @@ pub mod test {
             f: F,
         ) -> Option<T> {
             let mut d = self.data.lock().unwrap();
-            if let Some(p) = d.peers.get_mut(&pid) {
-                Some(f(p))
-            } else {
-                None
-            }
+            d.peers.get_mut(&pid).map(f)
         }
 
         fn remove_peer(&self, peer: PID) {
@@ -165,7 +161,7 @@ pub mod test {
 
         fn flush_peers(&mut self, mut peers: Vec<PID>) {
             let mut d = self.data.lock().unwrap();
-            d.flushed_peers.extend(peers.drain(..));
+            d.flushed_peers.append(&mut peers);
         }
 
         fn msg_peer(&mut self, peer: PID, msg: torrent::Message) {

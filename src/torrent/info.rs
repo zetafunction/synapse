@@ -585,9 +585,9 @@ mod tests {
                 assert_eq!(info.block_len(i, o * 16_384), 16_384);
             }
         }
-        assert_eq!(info.piece_len(pieces), end as u32);
+        assert_eq!(info.piece_len(pieces), end);
         assert_eq!(info.block_len(pieces, 0), 16_384);
-        assert_eq!(info.block_len(pieces, 16_384), (end % 16_384) as u32);
+        assert_eq!(info.block_len(pieces, 16_384), end % 16_384);
     }
 
     #[test]
@@ -682,7 +682,7 @@ mod tests {
         assert_eq!(n.end, 16384);
         assert_eq!(n.file, 0);
         assert_eq!(n.offset, 0);
-        assert_eq!(locs.next().is_none(), true);
+        assert!(locs.next().is_none());
 
         let mut locs = Info::block_disk_locs(&info, 1, 0);
         let n = locs.next().unwrap();
@@ -690,7 +690,7 @@ mod tests {
         assert_eq!(n.end, 16384);
         assert_eq!(n.file, 0);
         assert_eq!(n.offset, 16384);
-        assert_eq!(locs.next().is_none(), true);
+        assert!(locs.next().is_none());
 
         let mut locs = Info::block_disk_locs(&info, 2, 0);
         let n = locs.next().unwrap();

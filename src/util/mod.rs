@@ -25,7 +25,7 @@ pub type MHashMap<K, V> = HashMap<K, V, MBuildHasher>;
 pub type MHashSet<T> = HashSet<T, MBuildHasher>;
 pub type SHashMap<T> = MHashMap<String, T>;
 
-pub use self::io::{aread, awrite, io_err, io_err_val, IOR};
+pub use self::io::{IOR, aread, awrite, io_err, io_err_val};
 
 #[derive(Debug, Clone, Copy, Eq, Ord, PartialEq, PartialOrd)]
 pub struct UnlimitedOrU64(Option<std::num::NonZeroU64>);
